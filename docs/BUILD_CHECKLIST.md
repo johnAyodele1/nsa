@@ -36,17 +36,17 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Moderator/admin access is checked against database roles.
 - [x] Moderation decisions are transactional and audited.
 - [x] Build OIDC PKCE-backed web report submission/status and moderator review screens.
-- [ ] Build native OIDC login and the mobile member report form.
+- [x] Native OIDC authorization-code + PKCE login and mobile member report form use platform secure token storage; typecheck and Expo bundle exports pass.
 - [ ] Move browser access tokens behind a BFF HttpOnly cookie session.
 
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.
-- [x] pnpm typecheck passes on the current branch.
-- [x] pnpm test passes on the current branch, including PostgreSQL integration tests.
-- [x] pnpm build passes on the current branch.
-- [ ] Expo dependency compatibility check passes.
-- [ ] Web and mobile device/browser smoke tests pass.
-- [x] CI is green on the latest PR head (typecheck, tests and builds).
+- [x] pnpm typecheck passes on the current branch head.
+- [x] pnpm test passes on the current branch head, including PostgreSQL integration tests.
+- [x] pnpm build passes on the current branch head, including Android/iOS Expo exports.
+- [x] Expo dependency compatibility check passes in CI.
+- [ ] Web and mobile device/browser smoke tests pass (native OAuth requires a development build).
+- [x] CI is green on the latest PR head (typecheck, tests, web/API builds and Android/iOS exports).
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.

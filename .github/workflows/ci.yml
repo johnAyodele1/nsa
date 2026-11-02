@@ -21,7 +21,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nsa_test
+      DATABASE_URL: postgresql://postgres:${{ github.run_id }}-${{ github.run_attempt }}-ci-only@localhost:5432/nsa_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

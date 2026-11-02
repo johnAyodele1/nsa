@@ -71,3 +71,7 @@ export const liveStreamModerationDecisionSchema=z.object({decision:z.enum(["appr
 export const liveStreamReportSchema=z.object({reason:z.string().trim().min(20).max(1000)}).strict();
 export const liveStreamReportDecisionSchema=z.object({decision:z.enum(["resolve","dismiss"]),reason:z.string().trim().min(5).max(1000)}).strict();
 export type LiveStreamItem=z.infer<typeof liveStreamItemSchema>;
+
+export const liveStreamOwnedItemSchema=z.object({id:z.string().uuid(),title:z.string(),description:z.string(),state:nigerianStateSchema,locality:z.string().nullable(),status:z.enum(["pending_review","approved","live","ended","rejected"]),startedAt:z.string().datetime().nullable(),expiresAt:z.string().datetime(),createdAt:z.string().datetime()}).strict();
+export const liveStreamMineResponseSchema=z.object({data:z.array(liveStreamOwnedItemSchema)}).strict();
+export type LiveStreamOwnedItem=z.infer<typeof liveStreamOwnedItemSchema>;

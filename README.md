@@ -87,7 +87,7 @@ The web report form is available at `/report`; the native report form is availab
 The Express API has server-side Agora RTC token generation and a moderated live-session lifecycle:
 - Authenticated broadcaster requests require explicit safety acknowledgements and enter a moderator queue.
 - Only approved broadcasters can start a session; sessions expire automatically from the public listing.
-- Short-lived publisher tokens are issued only to the session owner. Subscriber tokens are withheld unless Agora co-host authentication is enabled in the Agora Console and `AGORA_CO_HOST_AUTH_ENABLED=true` is deliberately configured.
+- Short-lived publisher tokens are issued only to the session owner. Subscriber tokens are withheld unless Agora co-host authentication is enabled in the Agora Console and `AGORA_AUDIENCE_TOKEN_ENABLED=true` is deliberately configured.
 - Viewers can report abuse; moderators can inspect and resolve those reports. The App Certificate remains server-side.
 
 This is a backend foundation, not a finished live-video feature. Web and native Agora SDK clients, device testing, operational moderation, bandwidth controls and retention operations are still required. SOS and responder dispatch are not implemented.

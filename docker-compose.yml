@@ -9,7 +9,6 @@ services:
       - "5432:5432"
     volumes:
       - nsa_pgdata:/var/lib/postgresql/data
-      - ./database/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nsa -d nsa"]
       interval: 5s

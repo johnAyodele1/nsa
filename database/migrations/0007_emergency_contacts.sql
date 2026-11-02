@@ -22,6 +22,7 @@ INSERT INTO emergency_contacts(country_code,state,agency_name,label,phone_number
 ('NG',NULL,'Nigeria Emergency Communications Centre','National emergency line','112','National','https://ncc.gov.ng/node/3132',TIMESTAMPTZ '2026-11-02T00:00:00Z',TIMESTAMPTZ '2026-12-02T00:00:00Z',1),
 ('NG','Lagos','Lagos State Emergency Management Agency','Lagos emergency line','767','Lagos State','https://www.lagosstate.gov.ng/connect',TIMESTAMPTZ '2026-11-02T00:00:00Z',TIMESTAMPTZ '2026-12-02T00:00:00Z',2)
 ON CONFLICT DO NOTHING;
+UPDATE agency_directory SET description='Lagos Command directory entry. Direct emergency phone numbers are withheld until they can be verified from an authoritative official source.' WHERE slug='npf-lagos-command';
 UPDATE agency_contacts c SET is_active=false FROM agency_directory a
  WHERE a.id=c.agency_id AND (a.slug='npf-lagos-command' OR (a.slug='nscdc' AND c.phone_number='199'));
 REVOKE ALL ON emergency_contacts FROM PUBLIC;

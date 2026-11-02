@@ -32,7 +32,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records both migrations once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql"]);
  });
  it("serves the official agency directory with source-linked contact details",async()=>{
   const response=await request(app).get("/v1/agencies").expect(200);
@@ -43,12 +43,18 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   const efcc=response.body.data.find((agency:{acronym:string})=>agency.acronym==="EFCC");
   expect(efcc.contacts.some((contact:{phoneNumber:string})=>contact.phoneNumber==="+2348093322644")).toBe(true);
   const nscdc=response.body.data.find((agency:{acronym:string})=>agency.acronym==="NSCDC");
-  expect(nscdc.contacts.some((contact:{phoneNumber:string})=>contact.phoneNumber==="199")).toBe(true);
+  expect(nscdc.contacts.some((contact:{phoneNumber:string})=>contact.phoneNumber==="199")).toBe(false);
   const police=response.body.data.find((agency:{acronym:string})=>agency.acronym==="NPF");
-  expect(police.contacts.map((contact:{phoneNumber:string})=>contact.phoneNumber)).toEqual(expect.arrayContaining(["+2348057000001","+2348057000002","+2349133333785","+2349133333786"]));
+  expect(police.contacts).toHaveLength(0);
   const validPhone=/^(\+234[0-9]{7,10}|[0-9]{3,6})$/;
   expect(response.body.data.every((agency:{contacts:{phoneNumber:string}[]})=>agency.contacts.every(contact=>validPhone.test(contact.phoneNumber)))).toBe(true);
   expect(response.body.data.every((agency:{sourceUrl:string;sourceVerifiedAt:string;nextReviewAt:string})=>agency.sourceUrl.startsWith("https://")&&new Date(agency.nextReviewAt)>new Date(agency.sourceVerifiedAt))).toBe(true);
+ });
+ it("serves the national and Lagos emergency call lines with official sources",async()=>{
+  const response=await request(app).get("/v1/emergency-contacts?state=Lagos").expect(200);
+  const numbers=response.body.data.map((contact:{phoneNumber:string})=>contact.phoneNumber);
+  expect(numbers).toHaveLength(2);expect(numbers).toEqual(expect.arrayContaining(["112","767"]));
+  expect(response.body.data.every((contact:{sourceUrl:string;nextReviewAt:string;verifiedAt:string})=>contact.sourceUrl.startsWith("https://")&&new Date(contact.nextReviewAt)>new Date(contact.verifiedAt))).toBe(true);
  });
  it("publishes only reviewed records and paginates correctly when timestamps tie",async()=>{
   const first=await request(app).get("/v1/incidents?limit=1").expect(200);expect(first.body.data).toHaveLength(1);expect(first.body.data[0].title).toBe("Published first incident");expect(first.body.nextCursor).toBeTypeOf("string");

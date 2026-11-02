@@ -35,8 +35,9 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Members can read only their own report statuses.
 - [x] Moderator/admin access is checked against database roles.
 - [x] Moderation decisions are transactional and audited.
-- [x] Build a moderator web console with short-lived token handling, approved source selection and evidence-aware decisions.
-- [ ] Integrate browser SSO/BFF sessions and build the mobile member report form.
+- [x] Build OIDC PKCE-backed web report submission/status and moderator review screens.
+- [ ] Build native OIDC login and the mobile member report form.
+- [ ] Move browser access tokens behind a BFF HttpOnly cookie session.
 
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.

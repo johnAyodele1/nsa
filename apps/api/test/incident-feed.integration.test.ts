@@ -42,6 +42,12 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   expect(lasema.contacts.map((contact:{phoneNumber:string})=>contact.phoneNumber)).toEqual(expect.arrayContaining(["112","767","+2347035438447"]));
   const efcc=response.body.data.find((agency:{acronym:string})=>agency.acronym==="EFCC");
   expect(efcc.contacts.some((contact:{phoneNumber:string})=>contact.phoneNumber==="+2348093322644")).toBe(true);
+  const nscdc=response.body.data.find((agency:{acronym:string})=>agency.acronym==="NSCDC");
+  expect(nscdc.contacts.some((contact:{phoneNumber:string})=>contact.phoneNumber==="199")).toBe(true);
+  const police=response.body.data.find((agency:{acronym:string})=>agency.acronym==="NPF");
+  expect(police.contacts.map((contact:{phoneNumber:string})=>contact.phoneNumber)).toEqual(expect.arrayContaining(["+2348057000001","+2348057000002","+2349133333785","+2349133333786"]));
+  const validPhone=/^(\+234[0-9]{7,10}|[0-9]{3,6})$/;
+  expect(response.body.data.every((agency:{contacts:{phoneNumber:string}[]})=>agency.contacts.every(contact=>validPhone.test(contact.phoneNumber)))).toBe(true);
   expect(response.body.data.every((agency:{sourceUrl:string;sourceVerifiedAt:string;nextReviewAt:string})=>agency.sourceUrl.startsWith("https://")&&new Date(agency.nextReviewAt)>new Date(agency.sourceVerifiedAt))).toBe(true);
  });
  it("publishes only reviewed records and paginates correctly when timestamps tie",async()=>{

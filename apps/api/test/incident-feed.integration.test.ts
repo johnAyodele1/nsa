@@ -19,7 +19,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident feed integration",()=>{
    ["3f4e4b18-22b5-4d14-bbcb-17c48edc05d2","Published second incident","This second reviewed public safety report is available from its original primary source.","fire","Oyo","Ibadan","2026-11-02T07:00:00Z","2026-11-02T08:00:00Z","officially_confirmed","published",1,"https://example.gov.ng/second","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","2026-11-02T08:10:00Z"],
    ["4f4e4b18-22b5-4d14-bbcb-17c48edc05d3","Pending unreviewed report","This report is still waiting for a moderator and must never appear in the public incident feed.","robbery","Lagos","Yaba","2026-11-02T09:00:00Z",null,"unverified","pending_review",0,null,null,null]
   ] as const;
-  for(const row of rows)await pool.query(insert,row);
+  for(const row of rows)await pool.query(insert,[...row]);
  });
  afterAll(async()=>{await pool.end();});
  it("publishes only reviewed records and paginates without skipping timestamp ties",async()=>{

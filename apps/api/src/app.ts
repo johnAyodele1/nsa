@@ -8,7 +8,7 @@ import {createIngestionRouter} from "./ingestion.js";
 import {createLiveRouter,type AgoraConfig} from "./live.js";
 import {createPrivacyRouter} from "./privacy.js";
 import {createHash,randomUUID} from "node:crypto";
-import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema} from "@nsa/contracts";
+import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema,emergencyContactQuerySchema,emergencyContactListResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined;agoraConfig?:AgoraConfig};
 const encodeCursor=(payload:{publishedAt:string;id:string})=>Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -113,6 +113,14 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
    await client.query("COMMIT");transactionOpen=false;return res.status(200).json({data:{reportId:id.data,status:"approved",incidentId:incident.id}});
   }catch(error){if(transactionOpen&&client){try{await client.query("ROLLBACK");}catch(rollbackError){console.error("Moderation transaction rollback failed",rollbackError);}}return next(error);}
   finally{client?.release();}
+ });
+ app.get("/v1/emergency-contacts",async(req,res,next)=>{
+  const parsed=emergencyContactQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  try{
+   const result=await pool.query("SELECT id,agency_name,label,phone_number,scope,source_url,verified_at,next_review_at FROM emergency_contacts WHERE is_active IS TRUE AND next_review_at>now() AND (state IS NULL OR state=$1) ORDER BY CASE WHEN state=$1 THEN 0 ELSE 1 END,priority ASC",[parsed.data.state??null]);
+   const data=result.rows.map(row=>({id:row.id,agencyName:row.agency_name,label:row.label,phoneNumber:row.phone_number,scope:row.scope,sourceUrl:row.source_url,verifiedAt:new Date(row.verified_at).toISOString(),nextReviewAt:new Date(row.next_review_at).toISOString()}));
+   return res.status(200).json(emergencyContactListResponseSchema.parse({data}));
+  }catch(error){return next(error);}
  });
  app.get("/v1/agencies",async(_req,res,next)=>{
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});

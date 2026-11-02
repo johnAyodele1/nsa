@@ -36,6 +36,7 @@ The API verifies JWT signatures using the remote JWKS, validates issuer/audience
 ## API surface
 - `GET /v1/incidents`: published incidents only; supports Nigeria state/category filters and stable cursor pagination.
 - `POST /v1/reports`: authenticated report intake. Stores reports privately as pending review; no phone, email or exact coordinates are collected. Maximum five reports per account per hour.
+- `GET /v1/reports/mine`: authenticated member's own report status only.
 - `GET /v1/moderation/reports`: moderator/admin-only pending queue; reporter identity is not returned.
 - `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
 
@@ -46,7 +47,7 @@ The moderation API exists, but a moderator web console and mobile report form ar
 - PostgreSQL pool with connection and statement timeouts.
 - Advisory-locked, transactional, idempotent SQL migration runner.
 - Database constraints enforce Nigerian states, reviewed source approval and safe publication prerequisites.
-- Authenticated report intake, per-account rate limiting, role-protected moderation and audit records.
+- Authenticated report intake, per-account rate limiting, private report status, role-protected moderation and audit records.
 - OIDC verification uses HTTPS JWKS and explicit issuer/audience/algorithm checks.
 - CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and workspace builds.
 

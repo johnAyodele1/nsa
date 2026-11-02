@@ -23,13 +23,17 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Feed query excludes unpublished and soft-deleted incidents.
 - [x] Feed pagination uses a composite timestamp/id cursor.
 - [x] API response is checked against the shared Zod schema.
-- [x] PostgreSQL integration tests run against the real migration.
-- [x] Migrations are applied from an empty PostgreSQL database in CI and verified as idempotent.
+- [x] PostgreSQL integration tests run against the real migrations.
+- [x] Migrations are applied from an empty PostgreSQL database in CI and verified as idempotent/concurrency-safe.
 - [ ] Add database role separation and explicit least-privilege grants.
+- [ ] Enforce append-only audit records and database-level audit protections.
 - [ ] Add request correlation IDs and structured production logging.
-- [ ] Add API authentication, authorization and abuse controls before accepting reports.
-- [ ] Add secure report intake with private reporter data separated from public incident content.
-- [ ] Add moderation workflow with immutable audit events and role checks.
+- [x] OIDC authentication verifies HTTPS JWKS signatures, issuer, audience and allowed algorithms.
+- [x] Member report submission is authenticated, private, validated and limited to five per account per hour.
+- [x] Members can read only their own report statuses.
+- [x] Moderator/admin access is checked against database roles.
+- [x] Moderation decisions are transactional and audited.
+- [ ] Build the moderator web console and mobile report form.
 
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.
@@ -37,14 +41,15 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] pnpm test passes on the current branch, including PostgreSQL integration tests.
 - [x] pnpm build passes on the current branch.
 - [ ] Expo dependency compatibility check passes.
-- [ ] Web and mobile smoke tests pass.
+- [ ] Web and mobile device/browser smoke tests pass.
 - [x] CI is green on the latest PR head (typecheck, tests and builds).
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
+- [x] Corroborated reports require two distinct publishers; official confirmation requires an approved official source.
 - [ ] Only approved public feeds/APIs are ingested.
-- [ ] Ingested claims remain pending until human review.
-- [ ] Corroboration and official confirmation have distinct documented criteria.
+- [x] Submitted reports remain pending until human review.
+- [ ] Build approved source ingestion adapters with attribution, deduplication and rate limits.
 - [ ] Agency directory entries are verified against official agency-owned sources.
 - [ ] Media rights, malware scanning, metadata removal and moderation are implemented.
 

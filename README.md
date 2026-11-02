@@ -4,7 +4,7 @@ Nigeria-focused public-safety information platform. Web, Android and iOS clients
 
 ## Workspace
 - `apps/web`: responsive Next.js incident feed, official agency directory, OIDC-backed report form (`/report`) and moderator console (`/moderation`).
-- `apps/mobile`: Expo React Native incident feed and official agency directory for Android and iOS.
+- `apps/mobile`: Expo React Native incident feed, official agency directory and OIDC-authenticated report submission for Android and iOS.
 - `apps/api`: Express 5 API, OIDC authentication, report intake, moderation endpoints and PostgreSQL access.
 - `packages/contracts`: shared Zod request/response contracts.
 - `database/migrations`: PostgreSQL schema, approved-source registry, reports, moderation audit and source-linked agency contacts.
@@ -33,6 +33,9 @@ Report submission and moderation are disabled until OIDC is configured. Set the 
 - `NEXT_PUBLIC_OIDC_ISSUER_URL`: same HTTPS issuer for browser sign-in.
 - `NEXT_PUBLIC_OIDC_CLIENT_ID`: public OIDC client ID configured for authorization-code + PKCE.
 - `NEXT_PUBLIC_OIDC_AUDIENCE`: same API audience sent by the web client.
+- `EXPO_PUBLIC_OIDC_ISSUER_URL`: HTTPS issuer used by the native authorization-code + PKCE flow.
+- `EXPO_PUBLIC_OIDC_CLIENT_ID`: public native OIDC client ID with `nsa://auth/callback` registered as a redirect URI.
+- `EXPO_PUBLIC_OIDC_AUDIENCE`: API audience requested by the native client.
 
 The API verifies JWT signatures using the remote JWKS, validates issuer/audience and accepts RS256 or ES256 only. Do not put a client secret or signing private key in this repository. The identity provider owns sign-in and account lifecycle. New authenticated users receive the `member` role; moderator/admin roles must be provisioned by an authorized operator directly in the database. Never expose role assignment to public clients.
 
@@ -45,7 +48,7 @@ The API verifies JWT signatures using the remote JWKS, validates issuer/audience
 - `GET /v1/moderation/sources`: moderator/admin-only approved evidence sources.
 - `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
 
-The web report form is available at `/report`; the moderator console is at `/moderation`. Browser sign-in uses the OIDC authorization-code flow with PKCE and session-scoped token storage. The API independently validates every token and checks moderator/admin roles. A backend-for-frontend (BFF) cookie session and mobile member report form are not implemented yet. Source registry records must currently be provisioned by an authorized operator. No automatic ingestion adapter is enabled.
+The web report form is available at `/report`; the native report form is available at `/report`; the moderator console is at `/moderation`. Both clients use OIDC authorization-code + PKCE. Browser tokens are session-scoped; native access tokens are stored with iOS Keychain / Android Keystore via SecureStore and expire locally. No refresh token is retained. The API independently validates every token and checks moderator/admin roles. A backend-for-frontend (BFF) cookie session remains a hardening item. Source registry records must currently be provisioned by an authorized operator. No automatic ingestion adapter is enabled.
 
 ## Verified engineering baseline
 - Express 5 with injectable app, Helmet, explicit CORS allowlist, bounded JSON bodies and API rate limiting.

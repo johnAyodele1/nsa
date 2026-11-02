@@ -1,1 +1,1 @@
-import {Stack} from "expo-router";import {StatusBar} from "expo-status-bar";export default function RootLayout(){return <><StatusBar style="light"/><Stack screenOptions={{headerShown:false,contentStyle:{backgroundColor:"#090e0d"}}}/></>;}
+import {Stack} from "expo-router";import {MobileAuthProvider} from "../src/auth/MobileAuthProvider";import {StatusBar} from "expo-status-bar";export default function RootLayout(){return <MobileAuthProvider><StatusBar style="light"/><Stack screenOptions={{headerShown:false,contentStyle:{backgroundColor:"#090e0d"}}}/></MobileAuthProvider>;}

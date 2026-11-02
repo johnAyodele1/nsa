@@ -25,6 +25,28 @@ pnpm dev:api
 In separate terminals run `pnpm dev:web` and `pnpm dev:mobile`. For a physical phone, set `EXPO_PUBLIC_API_URL` to your computer's LAN IP, not localhost.
 
 ### Authentication setup
+Before the first migration, provision separate login roles with a database administrator. Create the NOLOGIN group roles `nsa_app`, `nsa_worker`, `nsa_web`, and `nsa_migrator`; create distinct LOGIN users for the API, worker, web session store and migration runner; grant each login membership in only its matching group role. Grant the migration login `USAGE, CREATE` on schema `public`. The SQL migrations also create the group roles if they do not already exist. Keep each connection string in the deployment secret manager. The migration runner must connect as the dedicated migration login, not as the API login or a superuser. `DATABASE_URL` is reserved for local/CI PostgreSQL integration tests.
+
+Provision these roles once as the database administrator, before running migrations. Use separate strong passwords; set them with psql's interactive \password command and store them in your secret manager.
+
+```sql
+CREATE ROLE nsa_app NOLOGIN;
+CREATE ROLE nsa_worker NOLOGIN;
+CREATE ROLE nsa_web NOLOGIN;
+CREATE ROLE nsa_migrator NOLOGIN;
+CREATE ROLE nsa_api_login LOGIN;
+CREATE ROLE nsa_worker_login LOGIN;
+CREATE ROLE nsa_web_login LOGIN;
+CREATE ROLE nsa_migrator_login LOGIN;
+GRANT nsa_app TO nsa_api_login;
+GRANT nsa_worker TO nsa_worker_login;
+GRANT nsa_web TO nsa_web_login;
+GRANT nsa_migrator TO nsa_migrator_login;
+GRANT USAGE, CREATE ON SCHEMA public TO nsa_migrator;
+```
+
+For the web BFF, set `WEB_PUBLIC_ORIGIN`, `API_INTERNAL_URL`, and generate `WEB_SESSION_ENCRYPTION_KEY` with `openssl rand -base64 32`. The browser only receives an HttpOnly opaque session cookie and a CSRF cookie; it never receives the provider access token. Configure the OIDC client callback URI as `https://your-web-host/api/auth/callback` and register the matching logout/allowed-origin settings at the identity provider.
+
 Report submission and moderation are disabled until OIDC is configured. Set the server values and browser client values in `.env`:
 - `OIDC_ISSUER_URL`: exact issuer URL from your identity provider.
 - `OIDC_JWKS_URL`: HTTPS JSON Web Key Set endpoint.
@@ -49,7 +71,7 @@ The API verifies JWT signatures using the remote JWKS, validates issuer/audience
 - `GET /v1/moderation/sources`: moderator/admin-only approved evidence sources.
 - `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
 
-The web report form is available at `/report`; the native report form is available at `/report`; the moderator console is at `/moderation`. Both clients use OIDC authorization-code + PKCE. Browser tokens are session-scoped; native access tokens are stored with iOS Keychain / Android Keystore via SecureStore and expire locally. No refresh token is retained. The API independently validates every token and checks moderator/admin roles. A backend-for-frontend (BFF) cookie session remains a hardening item. Source registry records must currently be provisioned by an authorized operator. Approved RSS/Atom/JSON Feed adapters stage items for human moderation; no automatic publication is enabled.
+The web report form is available at `/report`; the native report form is available at `/report`; the moderator console is at `/moderation`. The web client uses a Next.js BFF with authorization-code + PKCE, state/nonce verification, encrypted server-side access-token storage, opaque HttpOnly session cookies and CSRF validation. Browser JavaScript never receives the OIDC access token. Native access tokens are stored with iOS Keychain / Android Keystore via SecureStore. Source registry records must be provisioned by an authorized operator. RSS/Atom/JSON Feed adapters stage items for human moderation; no automatic publication is enabled, and the feed remains empty until approved sources exist and the worker is running.
 
 ## Verified engineering baseline
 - Express 5 with injectable app, Helmet, explicit CORS allowlist, bounded JSON bodies and API rate limiting.
@@ -61,6 +83,6 @@ The web report form is available at `/report`; the native report form is availab
 - CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and workspace builds.
 
 ## Safety and launch gates
-NSA is independent, not a government agency or emergency dispatch service. SOS, dispatch and live streaming are not operational. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
+NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains disabled until Agora credentials, web/mobile SDK clients, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 
 Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is not a launch-ready emergency-response system.

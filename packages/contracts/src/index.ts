@@ -59,3 +59,15 @@ export const ingestionModerationDecisionSchema=z.object({
  const ids=value.sourceIngestionItemIds??[];if(new Set(ids).size!==ids.length)ctx.addIssue({code:"custom",message:"Source item IDs must be unique"});
 });
 export type IngestionModerationDecision=z.infer<typeof ingestionModerationDecisionSchema>;
+
+export const liveStreamConsentSchema=z.object({privacyNoticeAccepted:z.literal(true),noChildrenOrVulnerablePeople:z.literal(true),noMedicalEmergencyBroadcast:z.literal(true),identifiablePeopleHaveConsented:z.literal(true),noExactLocationDisclosure:z.literal(true)}).strict();
+export const liveStreamCreateSchema=z.object({title:z.string().trim().min(8).max(120),description:z.string().trim().min(20).max(500),state:nigerianStateSchema,locality:z.string().trim().max(120).nullable().optional(),consent:liveStreamConsentSchema}).strict();
+export const liveStreamCreateResponseSchema=z.object({data:z.object({id:z.string().uuid(),status:z.literal("pending_review"),expiresAt:z.string().datetime()}).strict()}).strict();
+export const liveStreamItemSchema=z.object({id:z.string().uuid(),title:z.string(),description:z.string(),state:nigerianStateSchema,locality:z.string().nullable(),startedAt:z.string().datetime(),expiresAt:z.string().datetime()}).strict();
+export const liveStreamListResponseSchema=z.object({data:z.array(liveStreamItemSchema)}).strict();
+export const liveStreamTokenRequestSchema=z.object({role:z.enum(["viewer","publisher"]).optional()}).strict();
+export const liveStreamTokenResponseSchema=z.object({data:z.object({appId:z.string().min(1),channelName:z.string().min(1).max(64),uid:z.number().int().positive(),token:z.string().min(1),role:z.enum(["publisher","subscriber"]),expiresAt:z.string().datetime()}).strict()}).strict();
+export const liveStreamModerationDecisionSchema=z.object({decision:z.enum(["approve","reject"]),reason:z.string().trim().min(5).max(1000)}).strict();
+export const liveStreamReportSchema=z.object({reason:z.string().trim().min(20).max(1000)}).strict();
+export const liveStreamReportDecisionSchema=z.object({decision:z.enum(["resolve","dismiss"]),reason:z.string().trim().min(5).max(1000)}).strict();
+export type LiveStreamItem=z.infer<typeof liveStreamItemSchema>;

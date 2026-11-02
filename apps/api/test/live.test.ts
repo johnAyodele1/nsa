@@ -1,0 +1,13 @@
+import {describe,expect,it,vi} from "vitest";
+import type {RequestHandler} from "express";
+import request from "supertest";
+import {createApp} from "../src/app.js";
+const id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const auth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"live|member"};next();};
+const payload={title:"Live traffic update from Ikeja",description:"A live view of a road closure from a safe public location. The broadcast will not show private addresses or identifiable people without consent.",state:"Lagos",locality:"Ikeja",consent:{privacyNoticeAccepted:true,noChildrenOrVulnerablePeople:true,noMedicalEmergencyBroadcast:true,identifiablePeopleHaveConsented:true,noExactLocationDisclosure:true}};
+describe("Agora live session API",()=>{
+ it("requires all safety acknowledgements before writing",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[],authMiddleware:auth});await request(app).post("/v1/live-sessions").send({...payload,consent:{privacyNoticeAccepted:true}}).expect(400);expect(query).not.toHaveBeenCalled();});
+ it("fails closed when Agora is not configured",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[],authMiddleware:auth});await request(app).post(`/v1/live-sessions/${id}/token`).expect(503,{error:"AGORA_NOT_CONFIGURED"});expect(query).not.toHaveBeenCalled();});
+ it("does not issue publisher tokens to non-owners",async()=>{const query=vi.fn().mockResolvedValueOnce({rows:[]}).mockResolvedValueOnce({rows:[{id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",is_active:true}]}).mockResolvedValueOnce({rows:[{id,owner_id:"cccccccc-cccc-4ccc-8ccc-cccccccccccc",channel_name:"nsa_01234567890123456789012345678901"}]});const app=createApp({pool:{query} as never,allowedOrigins:[],authMiddleware:auth,agoraConfig:{appId:"12345678901234567890123456789012",appCertificate:"server-only-certificate",tokenTtlSeconds:900}});await request(app).post(`/v1/live-sessions/${id}/token`).send({role:"publisher"}).expect(403,{error:"PUBLISHER_ROLE_FORBIDDEN"});});
+ it("lists only live, unexpired streams",async()=>{const query=vi.fn().mockResolvedValue({rows:[]});const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/live-sessions").expect(200,{data:[]});expect(query.mock.calls[0]?.[0]).toContain("status='live'");});
+});

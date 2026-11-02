@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server";
+import {currentWebSession} from "../../../../server/session";
+export async function GET(){try{const session=await currentWebSession();return NextResponse.json({configured:Boolean(process.env.OIDC_ISSUER_URL&&process.env.NEXT_PUBLIC_OIDC_CLIENT_ID&&process.env.WEB_SESSION_DATABASE_URL&&process.env.WEB_SESSION_ENCRYPTION_KEY),authenticated:Boolean(session)},{headers:{"cache-control":"no-store"}});}catch{return NextResponse.json({configured:false,authenticated:false},{headers:{"cache-control":"no-store"}});}}

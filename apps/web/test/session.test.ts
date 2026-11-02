@@ -1,0 +1,10 @@
+import {afterEach,describe,expect,it} from "vitest";
+import {NextRequest} from "next/server";
+import {decryptAccessToken,encryptAccessToken,sha256,verifyCsrf,type WebSession} from "../src/server/session";
+const originalKey=process.env.WEB_SESSION_ENCRYPTION_KEY,originalOrigin=process.env.WEB_PUBLIC_ORIGIN;
+afterEach(()=>{if(originalKey===undefined)delete process.env.WEB_SESSION_ENCRYPTION_KEY;else process.env.WEB_SESSION_ENCRYPTION_KEY=originalKey;if(originalOrigin===undefined)delete process.env.WEB_PUBLIC_ORIGIN;else process.env.WEB_PUBLIC_ORIGIN=originalOrigin;});
+describe("web BFF session security",()=>{
+ it("encrypts and decrypts access tokens with authenticated AES-GCM",()=>{process.env.WEB_SESSION_ENCRYPTION_KEY=Buffer.alloc(32,7).toString("base64");const token="private-access-token";const encrypted=encryptAccessToken(token);const session={access_token_ciphertext:encrypted.ciphertext,access_token_iv:encrypted.iv,access_token_tag:encrypted.tag} as WebSession;expect(encrypted.ciphertext.toString("utf8")).not.toContain(token);expect(decryptAccessToken(session)).toBe(token);});
+ it("rejects tampered encrypted token bytes",()=>{process.env.WEB_SESSION_ENCRYPTION_KEY=Buffer.alloc(32,9).toString("base64");const encrypted=encryptAccessToken("private-token");const session={access_token_ciphertext:Buffer.from(encrypted.ciphertext).fill(0),access_token_iv:encrypted.iv,access_token_tag:encrypted.tag} as WebSession;expect(()=>decryptAccessToken(session)).toThrow();});
+ it("requires same-origin double-submit CSRF token",()=>{process.env.WEB_PUBLIC_ORIGIN="https://nsa.example";const token="csrf-token-value",session={csrf_token_hash:sha256(token)} as WebSession;const valid=new NextRequest("https://nsa.example/api/proxy",{headers:{origin:"https://nsa.example",cookie:"nsa_csrf=csrf-token-value","x-csrf-token":token}});expect(verifyCsrf(valid,session)).toBe(true);const attacker=new NextRequest("https://nsa.example/api/proxy",{headers:{origin:"https://attacker.example",cookie:"nsa_csrf=csrf-token-value","x-csrf-token":token}});expect(verifyCsrf(attacker,session)).toBe(false);});
+});

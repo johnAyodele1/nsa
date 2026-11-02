@@ -37,21 +37,21 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Moderation decisions are transactional and audited.
 - [x] Build OIDC PKCE-backed web report submission/status and moderator review screens.
 - [x] Native OIDC authorization-code + PKCE login and mobile member report form use platform secure token storage; typecheck and Expo bundle exports pass.
-- [ ] Move browser access tokens behind a BFF HttpOnly cookie session.
+- [ ] Move browser access tokens behind a BFF HttpOnly cookie session (implementation added; automated verification pending): server-side PKCE callback, encrypted database token storage, opaque HttpOnly session cookie, CSRF check and API proxy; production OIDC/database/key configuration remains deployment work.
 
 ## Automated quality gates
-- [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.
-- [x] pnpm typecheck passes on the current branch head.
-- [x] pnpm test passes on the current branch head, including PostgreSQL integration tests.
-- [x] pnpm build passes on the current branch head, including Android/iOS Expo exports.
+- [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile; lockfile generation workflow must complete and commit its output.
+- [ ] pnpm typecheck passes on the current branch head after the current changes.
+- [ ] pnpm test passes on the current branch head, including PostgreSQL integration tests.
+- [ ] pnpm build passes on the current branch head, including Android/iOS Expo exports.
 - [x] Expo dependency compatibility check passes in CI.
 - [ ] Web and mobile device/browser smoke tests pass (native OAuth requires a development build).
-- [x] CI is green on the latest PR head (typecheck, tests, web/API builds and Android/iOS exports).
+- [ ] CI is green on the latest PR head (typecheck, tests, web/API builds and Android/iOS exports).
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
 - [x] Corroborated reports require two distinct publishers; official confirmation requires an approved official source.
-- [x] Worker polls only approved, robots-allowed, terms-reviewed public feeds/APIs.
+- [x] Worker polls only approved, robots-allowed, robots-reviewed, terms-reviewed public feeds/APIs; no production source is auto-approved.
 - [x] Submitted reports remain pending until human review.
 - [x] Build RSS/Atom/JSON Feed adapters with HTTPS-only SSRF/DNS-rebinding controls, bounded parsing, conditional requests, backoff and deduplication.\n- [x] Keep imported items private in staging; publication requires human review, source independence and a documented rights review.
 - [x] Initial agency directory entries are source-linked to official agency-owned pages; contact numbers carry per-entry source links and review dates.
@@ -60,9 +60,9 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Emergency features and launch
 - [ ] SOS is designed with consent, location expiry, revocation, authorized recipients and audit trails.
 - [ ] A staffed response/escalation operation exists before SOS is enabled.
-- [ ] Live video has access control, retention limits, abuse handling and bandwidth controls.
+- [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval, time-limited sessions and abuse report intake (code and tests added; CI validation pending); Agora credentials and client SDK playback/publishing remain disabled until deployment and device testing.
 - [ ] NDPA 2023/privacy review, DPIA where appropriate, retention and breach plans are complete.
-- [ ] App Store and Play Store privacy disclosures, permission rationale and account deletion are complete.
+- [ ] Account deletion request workflow and privacy-rights request/audit endpoints (implementation added; CI validation pending); identity-provider deletion automation, NDPA review and App Store/Play disclosures remain outstanding.
 - [ ] Independent security review and incident-response exercise are complete.
 
 ## Working rules

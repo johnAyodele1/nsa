@@ -7,7 +7,7 @@ export type WorkerLogger={info:(message:string,meta?:Record<string,unknown>)=>vo
 const logger:WorkerLogger=console;
 async function claimSource(pool:Pool):Promise<Source|null>{
  const result=await pool.query<Source>(`WITH candidate AS (
-  SELECT id FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND terms_reviewed_at IS NOT NULL
+  SELECT id FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND robots_checked_at IS NOT NULL AND terms_reviewed_at IS NOT NULL
    AND COALESCE(next_poll_at,now())<=now() AND (poll_lease_until IS NULL OR poll_lease_until<now())
   ORDER BY COALESCE(next_poll_at,now()),id FOR UPDATE SKIP LOCKED LIMIT 1
  ) UPDATE source_registry s SET poll_lease_until=now()+interval '2 minutes',next_poll_at=now()+make_interval(secs=>s.polling_interval_seconds)
@@ -41,6 +41,7 @@ export async function ingestOneSource(pool:Pool,source:Source,log:WorkerLogger=l
  }
 }
 export async function runIngestionCycle(pool:Pool,log:WorkerLogger=logger):Promise<number>{
+ await pool.query("SELECT expire_source_ingestion_items()");
  let processed=0;let inserted=0;
  while(processed<25){const source=await claimSource(pool);if(!source)break;inserted+=await ingestOneSource(pool,source,log);processed++;}
  return inserted;

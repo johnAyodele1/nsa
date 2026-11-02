@@ -5,9 +5,12 @@ import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
 import {createIngestionRouter} from "./ingestion.js";
+import {createLiveRouter,type AgoraConfig} from "./live.js";
+import {createPrivacyRouter} from "./privacy.js";
+import {createHash} from "node:crypto";
 import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
-type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined};
+type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined;agoraConfig?:AgoraConfig};
 const encodeCursor=(payload:{publishedAt:string;id:string})=>Buffer.from(JSON.stringify(payload)).toString("base64url");
 function decodeCursor(value:string){try{const parsed=cursorPayloadSchema.safeParse(JSON.parse(Buffer.from(value,"base64url").toString("utf8")));return parsed.success?parsed.data:null;}catch{return null;}}
 const authNotConfigured:RequestHandler=(_req,res)=>res.status(503).json({error:"AUTH_NOT_CONFIGURED"});
@@ -19,7 +22,7 @@ function requireModerator(pool:Pool|null):RequestHandler{
   catch(error){return next(error);}
  };
 }
-export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
+export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Dependencies){
  const app=express();app.disable("x-powered-by");app.disable("etag");app.use(helmet());
  app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.includes(origin))return callback(null,true);return callback(null,false);},methods:["GET","POST"],allowedHeaders:["Content-Type","Authorization"],maxAge:600}));
  app.use(express.json({limit:"64kb",strict:true}));
@@ -28,12 +31,15 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
  app.get("/health/ready",async(_req,res)=>{if(!pool)return res.status(503).json({status:"not_ready",database:"not_configured"});try{await pool.query("SELECT 1");return res.status(200).json({status:"ready",database:"connected"});}catch{return res.status(503).json({status:"not_ready",database:"unavailable"});}});
  const authenticate=authMiddleware??authNotConfigured;
  app.use("/v1/moderation/ingestion-items",createIngestionRouter(pool,authenticate,requireModerator(pool)));
+ app.use("/v1/live-sessions",createLiveRouter(pool,authenticate,requireModerator(pool),agoraConfig??null));
+ app.use("/v1",createPrivacyRouter(pool,authenticate,requireModerator(pool)));
  app.post("/v1/reports",authenticate,async(req,res,next)=>{
   const parsed=reportSubmissionSchema.safeParse(req.body);if(!parsed.success)return res.status(400).json({error:"INVALID_REPORT",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   const auth=res.locals.auth;if(!auth?.subject)return res.status(401).json({error:"UNAUTHORIZED"});
   let client:PoolClient|undefined;let transactionOpen=false;
   try{
    client=await pool.connect();await client.query("BEGIN");transactionOpen=true;
+   const subjectHash=createHash("sha256").update(auth.subject).digest("hex");const erased=await client.query("SELECT 1 FROM erased_auth_subjects WHERE subject_hash=$1",[subjectHash]);if(erased.rowCount){await client.query("ROLLBACK");transactionOpen=false;return res.status(403).json({error:"ACCOUNT_DISABLED"});}
    const userResult=await client.query("INSERT INTO app_users(auth_subject) VALUES($1) ON CONFLICT(auth_subject) DO UPDATE SET last_seen_at=now() RETURNING id,is_active",[auth.subject]);const user=userResult.rows[0];
    if(!user?.is_active){await client.query("ROLLBACK");transactionOpen=false;return res.status(403).json({error:"ACCOUNT_DISABLED"});}
    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)",[auth.subject]);
@@ -60,7 +66,7 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
  app.get("/v1/moderation/sources",authenticate,requireModerator(pool),async(_req,res,next)=>{
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   try{
-   const result=await pool.query("SELECT id,publisher_name,display_name,canonical_url,is_official FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND terms_reviewed_at IS NOT NULL ORDER BY is_official DESC,publisher_name ASC LIMIT 100");
+   const result=await pool.query("SELECT id,publisher_name,display_name,canonical_url,is_official FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND robots_checked_at IS NOT NULL AND terms_reviewed_at IS NOT NULL ORDER BY is_official DESC,publisher_name ASC LIMIT 100");
    const data=result.rows.map(row=>({id:row.id,publisherName:row.publisher_name,displayName:row.display_name,canonicalUrl:row.canonical_url,isOfficial:row.is_official}));
    return res.status(200).json(moderationSourceListResponseSchema.parse({data}));
   }catch(error){return next(error);}

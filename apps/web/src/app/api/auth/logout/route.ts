@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from "next/server";
+import {deleteWebSession,SESSION_COOKIE,CSRF_COOKIE,currentWebSession,sessionCookieOptions,csrfCookieOptions} from "../../../../server/session";
+export async function POST(request:NextRequest){try{await currentWebSession();await deleteWebSession(request.cookies.get(SESSION_COOKIE)?.value);const response=NextResponse.json({ok:true});response.cookies.set(SESSION_COOKIE,"",{...sessionCookieOptions,maxAge:0});response.cookies.set(CSRF_COOKIE,"",{...csrfCookieOptions,maxAge:0});return response;}catch{return NextResponse.json({error:"LOGOUT_FAILED"},{status:503});}}

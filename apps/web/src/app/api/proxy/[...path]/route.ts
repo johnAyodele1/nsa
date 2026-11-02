@@ -1,16 +1,24 @@
 import {NextRequest,NextResponse} from "next/server";
 import {currentWebSession,verifyCsrf} from "../../../../server/session";
+import {isAllowedProxyRoute} from "../../../../server/proxy-policy";
 type Context={params:Promise<{path:string[]}>};
 async function handle(request:NextRequest,context:Context){
  try{
+  const {path}=await context.params;
+  if(!Array.isArray(path)||path.length<2||path[0]!=="v1"||path.some(segment=>!/^[a-zA-Z0-9_-]+$/.test(segment)))return NextResponse.json({error:"NOT_FOUND"},{status:404});
+  const apiPath="/"+path.join("/");if(!isAllowedProxyRoute(request.method,apiPath))return NextResponse.json({error:"NOT_FOUND"},{status:404});
   const session=await currentWebSession();if(!session)return NextResponse.json({error:"UNAUTHORIZED"},{status:401});
-  if(request.method!=="GET"&&!verifyCsrf(request,session))return NextResponse.json({error:"CSRF_REJECTED"},{status:403});
-  const {path}=await context.params;if(!path.length||path[0]!=="v1"||path.some(segment=>segment==="."||segment===".."||segment.includes("/")||segment.includes("\\")))return NextResponse.json({error:"INVALID_PROXY_PATH"},{status:404});
-  const base=process.env.API_INTERNAL_URL??"http://127.0.0.1:4000";const target=new URL(path.map(encodeURIComponent).join("/"),base.endsWith("/")?base:base+"/");target.search=request.nextUrl.search;
-  const headers=new Headers({authorization:"Bearer "+session.accessToken,accept:"application/json"});const contentType=request.headers.get("content-type");if(contentType)headers.set("content-type",contentType);
-  const init:RequestInit={method:request.method,headers,cache:"no-store",redirect:"manual"};if(request.method!=="GET"&&request.method!=="HEAD")init.body=await request.arrayBuffer();
-  const upstream=await fetch(target,init),responseHeaders=new Headers();const type=upstream.headers.get("content-type");if(type)responseHeaders.set("content-type",type);responseHeaders.set("cache-control","no-store");
-  return new NextResponse(upstream.body,{status:upstream.status,headers:responseHeaders});
- }catch(error){console.error("BFF proxy failed",error);return NextResponse.json({error:"UPSTREAM_UNAVAILABLE"},{status:502});}
+  if(request.method==="POST"&&!verifyCsrf(request,session))return NextResponse.json({error:"CSRF_VALIDATION_FAILED"},{status:403});
+  const base=process.env.API_INTERNAL_URL;if(!base)return NextResponse.json({error:"API_NOT_CONFIGURED"},{status:503});
+  const baseUrl=new URL(base);if(process.env.NODE_ENV==="production"&&baseUrl.protocol!=="https:")return NextResponse.json({error:"API_HTTPS_REQUIRED"},{status:503});
+  if(baseUrl.username||baseUrl.password||!["http:","https:"].includes(baseUrl.protocol))return NextResponse.json({error:"INVALID_API_CONFIGURATION"},{status:503});
+  const target=new URL(apiPath,base.endsWith("/")?base:base+"/");
+  if(request.method==="GET")for(const key of ["limit","cursor"]){const value=request.nextUrl.searchParams.get(key);if(value)target.searchParams.set(key,value);}
+  const headers=new Headers({authorization:"Bearer "+session.accessToken,accept:"application/json"});let body:string|undefined;
+  if(request.method==="POST"){const type=request.headers.get("content-type")??"";if(!type.toLowerCase().startsWith("application/json"))return NextResponse.json({error:"JSON_REQUIRED"},{status:415});const length=Number(request.headers.get("content-length")??0);if(length>65536)return NextResponse.json({error:"BODY_TOO_LARGE"},{status:413});body=await request.text();if(Buffer.byteLength(body,"utf8")>65536)return NextResponse.json({error:"BODY_TOO_LARGE"},{status:413});headers.set("content-type","application/json");}
+  const upstream=await fetch(target,{method:request.method,headers,body,cache:"no-store",redirect:"error",signal:AbortSignal.timeout(10000)});const responseBody=await upstream.arrayBuffer();
+  return new Response(responseBody,{status:upstream.status,headers:{"content-type":upstream.headers.get("content-type")??"application/json","cache-control":"no-store"}});
+ }catch(error){console.error("BFF API proxy failed",error);return NextResponse.json({error:"API_UNAVAILABLE"},{status:502,headers:{"cache-control":"no-store"}});}
 }
-export const GET=handle;export const POST=handle;
+export async function GET(request:NextRequest,context:Context){return handle(request,context);}
+export async function POST(request:NextRequest,context:Context){return handle(request,context);}

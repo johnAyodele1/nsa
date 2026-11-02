@@ -25,7 +25,8 @@ export default function LivePage(){
   if(!auth.authenticated){auth.signIn();return;}if(rtcMode!=="idle")return;setError("");setNotice("");let started=false;
   try{if(role==="publisher"){await post("/v1/live-sessions/"+stream.id+"/start",{});started=true;}
    const tokenResponse=await post("/v1/live-sessions/"+stream.id+"/token",{role});const token=liveStreamTokenResponseSchema.parse(tokenResponse).data;
-   setRtcMode(role);setActiveTitle(stream.title);activeStreamIdRef.current=stream.id;await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));\n   const {default:AgoraRTC}=await import("agora-rtc-sdk-ng");AgoraRTC.setLogLevel(3);const client=AgoraRTC.createClient({mode:"live",codec:"vp8"});clientRef.current=client;
+   setRtcMode(role);setActiveTitle(stream.title);activeStreamIdRef.current=stream.id;await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve())); 
+   const {default:AgoraRTC}=await import("agora-rtc-sdk-ng");AgoraRTC.setLogLevel(3);const client=AgoraRTC.createClient({mode:"live",codec:"vp8"});clientRef.current=client;
    await client.setClientRole(role==="publisher"?"host":"audience");
    client.on("user-published",async(user,mediaType)=>{await client.subscribe(user,mediaType);if(mediaType==="video"&&user.videoTrack&&remoteVideoRef.current)user.videoTrack.play(remoteVideoRef.current);if(mediaType==="audio"&&user.audioTrack)user.audioTrack.play();});
    client.on("user-unpublished",(user,mediaType)=>{if(mediaType==="video")user.videoTrack?.stop();});

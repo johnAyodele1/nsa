@@ -53,7 +53,7 @@ export default function SosScreen(){
   "Coordinates: "+location.latitude.toFixed(6)+", "+location.longitude.toFixed(6),
   "Map: https://www.google.com/maps?q="+location.latitude+","+location.longitude,
   location.accuracy?"GPS accuracy: approximately "+Math.round(location.accuracy)+" metres":null
- ].filter(Boolean).join("\\n"):"";
+ ].filter(Boolean).join("\n"):"";
  async function call(number:string){
   setCallError(null);
   try{await Linking.openURL("tel:"+number);}

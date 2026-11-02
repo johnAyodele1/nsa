@@ -3,13 +3,13 @@
 Nigeria-focused public-safety information platform. Web, Android and iOS clients share one Express API, PostgreSQL database and Zod contracts.
 
 ## Workspace
-- `apps/web`: responsive Next.js website.
-- `apps/mobile`: Expo React Native application for Android and iOS.
-- `apps/api`: Express 5 API, PostgreSQL access, transactional migrations and API tests.
+- `apps/web`: responsive Next.js public incident feed.
+- `apps/mobile`: Expo React Native incident feed for Android and iOS.
+- `apps/api`: Express 5 API, OIDC authentication, report intake, moderation endpoints and PostgreSQL access.
 - `packages/contracts`: shared Zod request/response contracts.
-- `database/migrations`: PostgreSQL schema, source registry and moderation audit records.
+- `database/migrations`: PostgreSQL schema, source registry, reports and moderation audit.
 - `apps/worker`: ingestion policy boundary; no scraper or auto-publisher is enabled.
-- `docs/BUILD_CHECKLIST.md`: cross-checked delivery checklist and outstanding work.
+- `docs/BUILD_CHECKLIST.md`: cross-checked delivery checklist and remaining work.
 
 ## Local development
 Requires Node.js 22.12+, pnpm 10+, Docker.
@@ -25,17 +25,32 @@ pnpm dev:api
 
 In separate terminals run `pnpm dev:web` and `pnpm dev:mobile`. For a physical phone, set `EXPO_PUBLIC_API_URL` to your computer's LAN IP, not localhost.
 
-## Current verified baseline
-- Express 5 API with injectable app factory, Helmet, CORS allowlist, bounded JSON bodies and API rate limiting.
+### Authentication setup
+Report submission and moderation are disabled until OIDC is configured. Set all three values in `.env`:
+- `OIDC_ISSUER_URL`: exact issuer URL from your identity provider.
+- `OIDC_JWKS_URL`: HTTPS JSON Web Key Set endpoint.
+- `OIDC_AUDIENCE`: API audience expected in access tokens.
+
+The API verifies JWT signatures using the remote JWKS, validates issuer/audience and accepts RS256 or ES256 only. Do not put a client secret or signing private key in this repository. The identity provider owns sign-in and account lifecycle. New authenticated users receive the `member` role; moderator/admin roles must be provisioned by an authorized operator directly in the database. Never expose role assignment to public clients.
+
+## API surface
+- `GET /v1/incidents`: published incidents only; supports Nigeria state/category filters and stable cursor pagination.
+- `POST /v1/reports`: authenticated report intake. Stores reports privately as pending review; no phone, email or exact coordinates are collected. Maximum five reports per account per hour.
+- `GET /v1/moderation/reports`: moderator/admin-only pending queue; reporter identity is not returned.
+- `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
+
+The moderation API exists, but a moderator web console and mobile report form are not implemented yet. Source registry records must currently be provisioned by an authorized operator. No automatic ingestion adapter is enabled.
+
+## Verified engineering baseline
+- Express 5 with injectable app, Helmet, explicit CORS allowlist, bounded JSON bodies and API rate limiting.
 - PostgreSQL pool with connection and statement timeouts.
 - Advisory-locked, transactional, idempotent SQL migration runner.
-- Nigeria-only state validation at the database boundary.
-- Source registry requires source terms and robots review before approval.
-- Published incidents require moderator review, a non-unverified status and at least one public source.
-- Incident feed uses parameterized SQL, shared Zod response validation and timestamp/id keyset pagination.
-- CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and application builds.
+- Database constraints enforce Nigerian states, reviewed source approval and safe publication prerequisites.
+- Authenticated report intake, per-account rate limiting, role-protected moderation and audit records.
+- OIDC verification uses HTTPS JWKS and explicit issuer/audience/algorithm checks.
+- CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and workspace builds.
 
 ## Safety and launch gates
-NSA is independent, not a government agency or emergency dispatch service. SOS, dispatch and live streaming are not operational. No fake incidents or agency contacts are seeded. Reports must remain private/pending until human review; one social post is not verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
+NSA is independent, not a government agency or emergency dispatch service. SOS, dispatch and live streaming are not operational. No fake incidents or agency contact details are seeded. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 
-Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is an engineering foundation, not a launch-ready emergency-response system.
+Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is not a launch-ready emergency-response system.

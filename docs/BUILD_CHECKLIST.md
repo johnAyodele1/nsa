@@ -29,7 +29,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Migrations are applied from an empty PostgreSQL database in CI and verified as idempotent/concurrency-safe.
 - [x] Add separate nsa_app, nsa_worker, nsa_web and nsa_migrator roles with explicit grants; production login membership and secrets remain deployment tasks.
 - [x] Enforce append-only audit records with database triggers and remove UPDATE/DELETE privileges from the API role.
-- [ ] Add request correlation IDs and structured production logging.
+- [x] Generate server-owned request IDs, return `x-request-id`, and emit structured request-completion/error logs without logging query strings or user data.
 - [x] OIDC authentication verifies HTTPS JWKS signatures, issuer, audience and allowed algorithms.
 - [x] Member report submission is authenticated, private, validated and limited to five per account per hour.
 - [x] Members can read only their own report statuses.

@@ -16,7 +16,7 @@ async function handle(request:NextRequest,context:Context){
   if(request.method==="GET")for(const key of ["limit","cursor"]){const value=request.nextUrl.searchParams.get(key);if(value)target.searchParams.set(key,value);}
   const headers=new Headers({authorization:"Bearer "+session.accessToken,accept:"application/json"});let body:string|undefined;
   if(request.method==="POST"){const type=request.headers.get("content-type")??"";if(!type.toLowerCase().startsWith("application/json"))return NextResponse.json({error:"JSON_REQUIRED"},{status:415});const length=Number(request.headers.get("content-length")??0);if(length>65536)return NextResponse.json({error:"BODY_TOO_LARGE"},{status:413});body=await request.text();if(Buffer.byteLength(body,"utf8")>65536)return NextResponse.json({error:"BODY_TOO_LARGE"},{status:413});headers.set("content-type","application/json");}
-  const upstream=await fetch(target,{method:request.method,headers,body,cache:"no-store",redirect:"error",signal:AbortSignal.timeout(10000)});const responseBody=await upstream.arrayBuffer();
+  const requestInit:RequestInit={method:request.method,headers,cache:"no-store",redirect:"error",signal:AbortSignal.timeout(10000),...(body===undefined?{}:{body})};const upstream=await fetch(target,requestInit);const responseBody=await upstream.arrayBuffer();
   return new Response(responseBody,{status:upstream.status,headers:{"content-type":upstream.headers.get("content-type")??"application/json","cache-control":"no-store"}});
  }catch(error){console.error("BFF API proxy failed",error);return NextResponse.json({error:"API_UNAVAILABLE"},{status:502,headers:{"cache-control":"no-store"}});}
 }

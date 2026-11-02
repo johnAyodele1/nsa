@@ -47,7 +47,9 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  });
  it("allows only moderators to see the review queue and hides reporter identity",async()=>{
   await request(authenticatedApp).get("/v1/moderation/reports").expect(403);
-  const response=await request(moderationApp).get("/v1/moderation/reports").expect(200);expect(response.body.data.some((item:{id:string})=>item.id===reportId)).toBe(true);expect(JSON.stringify(response.body)).not.toContain("integration|member");\n  const sources=await request(moderationApp).get("/v1/moderation/sources").expect(200);expect(sources.body.data).toHaveLength(1);expect(sources.body.data[0]).toMatchObject({publisherName:"Lagos Emergency Management Agency",isOfficial:true});\n  await request(authenticatedApp).get("/v1/moderation/sources").expect(403);
+  const response=await request(moderationApp).get("/v1/moderation/reports").expect(200);expect(response.body.data.some((item:{id:string})=>item.id===reportId)).toBe(true);expect(JSON.stringify(response.body)).not.toContain("integration|member");
+  const sources=await request(moderationApp).get("/v1/moderation/sources").expect(200);expect(sources.body.data).toHaveLength(1);expect(sources.body.data[0]).toMatchObject({publisherName:"Lagos Emergency Management Agency",isOfficial:true});
+  await request(authenticatedApp).get("/v1/moderation/sources").expect(403);
  });
  it("requires approved official evidence before publishing a report",async()=>{
   const response=await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).send({decision:"approve",reason:"Confirmed against the agency-owned public notice.",verificationStatus:"officially_confirmed",sources:[{sourceRegistryId,sourceUrl:"https://agency.gov.ng/notices/123"}]}).expect(200);

@@ -2,6 +2,7 @@ import {describe,expect,it,vi} from "vitest";
 import type {RequestHandler} from "express";
 import request from "supertest";
 import {createApp} from "../src/app.js";
+import {createOidcAuthMiddleware} from "../src/auth.js";
 const incident={id:"2f4e4b18-22b5-4d14-bbcb-17c48edc05d1",title:"Verified road closure notice",summary:"A road closure notice published by approved sources. Check the primary source for current diversion details.",category:"road_accident",state:"Lagos",locality:"Ikeja",occurred_at:new Date("2026-11-02T08:00:00.000Z"),published_at:new Date("2026-11-02T08:30:00.000Z"),verification_status:"corroborated",source_count:2,public_source_url:"https://example.gov.ng/notices/1"};
 const reportBody={title:"Road obstruction near Ikeja",summary:"A fallen tree is blocking one lane near the junction. Drivers should take care while the report is reviewed.",category:"road_accident",state:"Lagos",locality:"Ikeja",occurredAt:"2026-11-02T08:00:00.000Z"};
 const auth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"oidc|member-123"};next();};
@@ -13,19 +14,14 @@ describe("Express API",()=>{
  it("rejects malformed cursors without querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?cursor=bad").expect(400,{error:"INVALID_CURSOR"});expect(query).not.toHaveBeenCalled();});
  it("returns not found for unknown routes",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).get("/missing").expect(404,{error:"NOT_FOUND"});});
  it("fails closed when OIDC authentication is not configured",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).post("/v1/reports").send(reportBody).expect(503,{error:"AUTH_NOT_CONFIGURED"});});
+ it("requires bearer authentication when OIDC is configured",async()=>{const authMiddleware=createOidcAuthMiddleware({issuer:"https://identity.example",jwksUrl:"https://identity.example/.well-known/jwks.json",audience:"nsa-api"});const app=createApp({pool:null,allowedOrigins:[],authMiddleware});await request(app).post("/v1/reports").send(reportBody).expect(401,{error:"UNAUTHORIZED"});});
+ it("rejects insecure OIDC endpoints",()=>{expect(()=>createOidcAuthMiddleware({issuer:"http://identity.example",jwksUrl:"https://identity.example/jwks",audience:"nsa-api"})).toThrow("must use HTTPS");});
  it("rejects malformed reports before opening a database transaction",async()=>{const connect=vi.fn();const app=createApp({pool:{connect} as never,allowedOrigins:[],authMiddleware:auth});await request(app).post("/v1/reports").send({...reportBody,state:"Accra"}).expect(400);expect(connect).not.toHaveBeenCalled();});
  it("stores authenticated reports as pending and keeps reporter identity out of the response",async()=>{
-  const client={query:vi.fn()
-   .mockResolvedValueOnce({})
-   .mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",is_active:true}]})
-   .mockResolvedValueOnce({})
-   .mockResolvedValueOnce({rows:[{count:0}]})
-   .mockResolvedValueOnce({rows:[{id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",status:"pending_review",created_at:new Date("2026-11-02T08:45:00.000Z")}]})
-   .mockResolvedValueOnce({}),release:vi.fn()};
+  const client={query:vi.fn().mockResolvedValueOnce({}).mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",is_active:true}]}).mockResolvedValueOnce({}).mockResolvedValueOnce({rows:[{count:0}]}).mockResolvedValueOnce({rows:[{id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",status:"pending_review",created_at:new Date("2026-11-02T08:45:00.000Z")}] }).mockResolvedValueOnce({}),release:vi.fn()};
   const connect=vi.fn().mockResolvedValue(client);const app=createApp({pool:{connect} as never,allowedOrigins:[],authMiddleware:auth});
   const response=await request(app).post("/v1/reports").send(reportBody).expect(202);
-  expect(response.body.data.status).toBe("pending_review");
-  expect(response.body.data.id).toBe("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+  expect(response.body.data.status).toBe("pending_review");expect(response.body.data.id).toBe("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
   expect(JSON.stringify(response.body)).not.toContain("oidc|member-123");
   expect(client.query).toHaveBeenCalledWith(expect.stringContaining("pg_advisory_xact_lock"),["oidc|member-123"]);
   expect(client.release).toHaveBeenCalledOnce();

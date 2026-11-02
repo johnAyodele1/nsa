@@ -7,7 +7,21 @@ export const incidentListResponseSchema=z.object({data:z.array(incidentSchema),n
 export const incidentQuerySchema=z.object({state:nigerianStateSchema.optional(),category:incidentCategorySchema.optional(),cursor:z.string().min(1).max(256).optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).strict();
 export const reportSubmissionSchema=z.object({title:z.string().trim().min(8).max(180),summary:z.string().trim().min(20).max(2000).refine(value=>!/<[^>]*>/.test(value),"HTML markup is not accepted"),category:incidentCategorySchema,state:nigerianStateSchema,locality:z.string().trim().max(120).nullable().optional(),occurredAt:z.string().datetime(),sourceUrl:z.string().url().refine(value=>value.startsWith("https://"),"Source URL must use HTTPS").nullable().optional()}).strict();
 export const reportSubmissionResponseSchema=z.object({data:z.object({id:z.string().uuid(),status:z.literal("pending_review"),createdAt:z.string().datetime()}).strict()}).strict();
+export const reportModerationDecisionSchema=z.object({
+ decision:z.enum(["approve","reject"]),
+ reason:z.string().trim().min(5).max(1000),
+ verificationStatus:z.enum(["corroborated","officially_confirmed"]).optional(),
+ sources:z.array(z.object({sourceRegistryId:z.string().uuid(),sourceUrl:z.string().url().refine(value=>value.startsWith("https://"),"Source URL must use HTTPS")}).strict()).min(1).max(5).optional()
+}).strict().superRefine((value,ctx)=>{
+ if(value.decision==="approve"&&(!value.verificationStatus||!value.sources?.length))ctx.addIssue({code:"custom",message:"Approval requires a verification status and reviewed sources"});
+ if(value.decision==="reject"&&(value.verificationStatus||value.sources))ctx.addIssue({code:"custom",message:"Rejection cannot include publication evidence"});
+ if(value.verificationStatus==="corroborated"&&(value.sources?.length??0)<2)ctx.addIssue({code:"custom",message:"Corroboration requires at least two sources"});
+ const ids=value.sources?.map(source=>source.sourceRegistryId)??[];
+ if(new Set(ids).size!==ids.length)ctx.addIssue({code:"custom",message:"Source registry IDs must be unique"});
+});
+export const moderationQueueQuerySchema=z.object({limit:z.coerce.number().int().min(1).max(50).default(20)}).strict();
 export type Incident=z.infer<typeof incidentSchema>;
 export type IncidentCategory=z.infer<typeof incidentCategorySchema>;
 export type NigerianState=z.infer<typeof nigerianStateSchema>;
 export type ReportSubmission=z.infer<typeof reportSubmissionSchema>;
+export type ReportModerationDecision=z.infer<typeof reportModerationDecisionSchema>;

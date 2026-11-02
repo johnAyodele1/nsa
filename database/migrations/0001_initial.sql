@@ -17,6 +17,7 @@ CREATE TABLE source_registry(
  terms_url text CHECK(terms_url IS NULL OR terms_url LIKE 'https://%'),
  licence_name varchar(160),
  attribution_text varchar(500),
+ is_official boolean NOT NULL DEFAULT false,
  polling_interval_seconds integer NOT NULL DEFAULT 1800 CHECK(polling_interval_seconds BETWEEN 300 AND 86400),
  retention_days integer NOT NULL DEFAULT 90 CHECK(retention_days BETWEEN 1 AND 3650),
  robots_checked_at timestamptz,

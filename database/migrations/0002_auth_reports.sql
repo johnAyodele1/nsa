@@ -12,6 +12,9 @@ CREATE TABLE app_users(
  last_seen_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE incidents ADD CONSTRAINT incidents_reviewed_by_fk FOREIGN KEY(reviewed_by) REFERENCES app_users(id) ON DELETE RESTRICT;
+ALTER TABLE source_registry ADD CONSTRAINT source_registry_approved_by_fk FOREIGN KEY(approved_by) REFERENCES app_users(id) ON DELETE RESTRICT;
+
 CREATE TABLE incident_reports(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  reporter_id uuid NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,
@@ -28,7 +31,8 @@ CREATE TABLE incident_reports(
  reviewed_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
- CHECK(status='pending_review' OR (reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL))
+ CHECK(status='pending_review' OR (reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)),
+ CHECK(status<>'approved' OR incident_id IS NOT NULL)
 );
 CREATE INDEX incident_reports_pending_idx ON incident_reports(created_at ASC) WHERE status='pending_review';
 CREATE INDEX incident_reports_reporter_idx ON incident_reports(reporter_id,created_at DESC);

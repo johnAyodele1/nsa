@@ -34,23 +34,23 @@ CREATE INDEX agency_directory_active_idx ON agency_directory(scope,name) WHERE i
 CREATE INDEX agency_contacts_active_idx ON agency_contacts(agency_id,display_order) WHERE is_active IS TRUE;
 
 INSERT INTO agency_directory(slug,name,acronym,scope,description,official_website,source_url,source_verified_at,next_review_at) VALUES
-('lasema','Lagos State Emergency Management Agency','LASEMA','Lagos State','Coordinates emergency response and disaster management within Lagos State.','https://lasema.com.ng','https://lasema.com.ng/contact/','2026-11-02T00:00:00Z','2026-12-02T00:00:00Z'),
-('efcc','Economic and Financial Crimes Commission','EFCC','National','Receives reports and investigates economic and financial crimes. This is not a general emergency response service.','https://www.efcc.gov.ng','https://www.efcc.gov.ng/','2026-11-02T00:00:00Z','2026-12-02T00:00:00Z'),
-('nscdc','Nigeria Security and Civil Defence Corps','NSCDC','National','Civil defence, protection of critical national assets and security incident reporting.','https://nscdc.gov.ng','https://nscdc.gov.ng/','2026-11-02T00:00:00Z','2026-12-02T00:00:00Z'),
-('npf-lagos-command','Nigeria Police Force — Lagos Command','NPF','Lagos State','Lagos Command emergency contact lines published by the Nigeria Police Force.','https://lagos.npf.gov.ng','https://lagoscommand.npf.gov.ng/news/details/812','2026-11-02T00:00:00Z','2026-12-02T00:00:00Z')
+('lasema','Lagos State Emergency Management Agency','LASEMA','Lagos State','Coordinates emergency response and disaster management within Lagos State.','https://lasema.com.ng','https://lasema.com.ng/contact/',TIMESTAMPTZ '2026-11-02T00:00:00Z',TIMESTAMPTZ '2026-12-02T00:00:00Z'),
+('efcc','Economic and Financial Crimes Commission','EFCC','National','Receives reports and investigates economic and financial crimes. This is not a general emergency response service.','https://www.efcc.gov.ng','https://www.efcc.gov.ng/',TIMESTAMPTZ '2026-11-02T00:00:00Z',TIMESTAMPTZ '2026-12-02T00:00:00Z'),
+('nscdc','Nigeria Security and Civil Defence Corps','NSCDC','National','Civil defence, protection of critical national assets and security incident reporting.','https://nscdc.gov.ng','https://nscdc.gov.ng/',TIMESTAMPTZ '2026-11-02T00:00:00Z',TIMESTAMPTZ '2026-12-02T00:00:00Z'),
+('npf-lagos-command','Nigeria Police Force — Lagos Command','NPF','Lagos State','Lagos Command emergency contact lines published by the Nigeria Police Force.','https://lagos.npf.gov.ng','https://lagoscommand.npf.gov.ng/news/details/812',TIMESTAMPTZ '2026-11-02T00:00:00Z',TIMESTAMPTZ '2026-12-02T00:00:00Z')
 ON CONFLICT(slug) DO NOTHING;
 
 INSERT INTO agency_contacts(agency_id,label,phone_number,contact_type,source_url,verified_at,display_order)
-SELECT id,'Lagos emergency line (112)','112','emergency','https://lasema.com.ng/contact/','2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='lasema'
-UNION ALL SELECT id,'Lagos emergency line (767)','767','emergency','https://lasema.com.ng/contact/','2026-11-02T00:00:00Z',2 FROM agency_directory WHERE slug='lasema'
-UNION ALL SELECT id,'LASEMA office contact','+2347035438447','office','https://lasema.com.ng/contact/','2026-11-02T00:00:00Z',3 FROM agency_directory WHERE slug='lasema'
-UNION ALL SELECT id,'EFCC hotline','+2348093322644','hotline','https://www.efcc.gov.ng/','2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='efcc'
-UNION ALL SELECT id,'NSCDC emergency hotline','199','emergency','https://nscdc.gov.ng/','2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='nscdc'
-UNION ALL SELECT id,'NSCDC incident reporting','+23492914164','hotline','https://nscdc.gov.ng/','2026-11-02T00:00:00Z',2 FROM agency_directory WHERE slug='nscdc'
-UNION ALL SELECT id,'Lagos Police emergency line 1','08057000001','emergency','https://lagoscommand.npf.gov.ng/news/details/812','2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='npf-lagos-command'
-UNION ALL SELECT id,'Lagos Police emergency line 2','08057000002','emergency','https://lagoscommand.npf.gov.ng/news/details/812','2026-11-02T00:00:00Z',2 FROM agency_directory WHERE slug='npf-lagos-command'
-UNION ALL SELECT id,'Lagos Police emergency line 3','09133333785','emergency','https://lagoscommand.npf.gov.ng/news/details/812','2026-11-02T00:00:00Z',3 FROM agency_directory WHERE slug='npf-lagos-command'
-UNION ALL SELECT id,'Lagos Police emergency line 4','09133333786','emergency','https://lagoscommand.npf.gov.ng/news/details/812','2026-11-02T00:00:00Z',4 FROM agency_directory WHERE slug='npf-lagos-command'
+SELECT id,'Lagos emergency line (112)','112','emergency','https://lasema.com.ng/contact/',TIMESTAMPTZ '2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='lasema'
+UNION ALL SELECT id,'Lagos emergency line (767)','767','emergency','https://lasema.com.ng/contact/',TIMESTAMPTZ '2026-11-02T00:00:00Z',2 FROM agency_directory WHERE slug='lasema'
+UNION ALL SELECT id,'LASEMA office contact','+2347035438447','office','https://lasema.com.ng/contact/',TIMESTAMPTZ '2026-11-02T00:00:00Z',3 FROM agency_directory WHERE slug='lasema'
+UNION ALL SELECT id,'EFCC hotline','+2348093322644','hotline','https://www.efcc.gov.ng/',TIMESTAMPTZ '2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='efcc'
+UNION ALL SELECT id,'NSCDC emergency hotline','199','emergency','https://nscdc.gov.ng/',TIMESTAMPTZ '2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='nscdc'
+UNION ALL SELECT id,'NSCDC incident reporting','+23492914164','hotline','https://nscdc.gov.ng/',TIMESTAMPTZ '2026-11-02T00:00:00Z',2 FROM agency_directory WHERE slug='nscdc'
+UNION ALL SELECT id,'Lagos Police emergency line 1','08057000001','emergency','https://lagoscommand.npf.gov.ng/news/details/812',TIMESTAMPTZ '2026-11-02T00:00:00Z',1 FROM agency_directory WHERE slug='npf-lagos-command'
+UNION ALL SELECT id,'Lagos Police emergency line 2','08057000002','emergency','https://lagoscommand.npf.gov.ng/news/details/812',TIMESTAMPTZ '2026-11-02T00:00:00Z',2 FROM agency_directory WHERE slug='npf-lagos-command'
+UNION ALL SELECT id,'Lagos Police emergency line 3','09133333785','emergency','https://lagoscommand.npf.gov.ng/news/details/812',TIMESTAMPTZ '2026-11-02T00:00:00Z',3 FROM agency_directory WHERE slug='npf-lagos-command'
+UNION ALL SELECT id,'Lagos Police emergency line 4','09133333786','emergency','https://lagoscommand.npf.gov.ng/news/details/812',TIMESTAMPTZ '2026-11-02T00:00:00Z',4 FROM agency_directory WHERE slug='npf-lagos-command'
 ON CONFLICT(agency_id,phone_number) DO NOTHING;
 
 REVOKE ALL ON agency_directory,agency_contacts FROM PUBLIC;

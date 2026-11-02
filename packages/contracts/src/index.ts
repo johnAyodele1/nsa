@@ -75,3 +75,7 @@ export type LiveStreamItem=z.infer<typeof liveStreamItemSchema>;
 export const liveStreamOwnedItemSchema=z.object({id:z.string().uuid(),title:z.string(),description:z.string(),state:nigerianStateSchema,locality:z.string().nullable(),status:z.enum(["pending_review","approved","live","ended","rejected"]),startedAt:z.string().datetime().nullable(),expiresAt:z.string().datetime(),createdAt:z.string().datetime()}).strict();
 export const liveStreamMineResponseSchema=z.object({data:z.array(liveStreamOwnedItemSchema)}).strict();
 export type LiveStreamOwnedItem=z.infer<typeof liveStreamOwnedItemSchema>;
+
+export const liveStreamModerationQueueItemSchema=z.object({id:z.string().uuid(),title:z.string(),description:z.string(),state:nigerianStateSchema,locality:z.string().nullable(),status:z.enum(["pending_review","live"]),createdAt:z.string().datetime(),expiresAt:z.string().datetime()}).strict();
+export const liveStreamModerationQueueResponseSchema=z.object({data:z.array(liveStreamModerationQueueItemSchema)}).strict();
+export type LiveStreamModerationQueueItem=z.infer<typeof liveStreamModerationQueueItemSchema>;

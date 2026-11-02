@@ -37,7 +37,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Moderation decisions are transactional and audited.
 - [x] Build OIDC PKCE-backed web report submission/status and moderator review screens.
 - [x] Native OIDC authorization-code + PKCE login and mobile member report form use platform secure token storage; typecheck and Expo bundle exports pass.
-- [ ] Move browser access tokens behind a BFF HttpOnly cookie session (implementation added; automated verification pending): server-side PKCE callback, encrypted database token storage, opaque HttpOnly session cookie, CSRF check and API proxy; production OIDC/database/key configuration remains deployment work.
+- [ ] Move browser access tokens behind a BFF HttpOnly cookie session (implementation and tests added; latest CI verification pending): server-side PKCE callback, encrypted database token storage, `__Host-` HttpOnly session cookie in production, CSRF checks and route-allowlisted API proxy; production OIDC/database/key configuration remains deployment work.
 
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile; lockfile generation workflow must complete and commit its output.
@@ -45,7 +45,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [ ] pnpm test passes on the current branch head, including PostgreSQL integration tests.
 - [ ] pnpm build passes on the current branch head, including Android/iOS Expo exports.
 - [x] Expo dependency compatibility check passes in CI.
-- [ ] Web and mobile device/browser smoke tests pass (native OAuth requires a development build).
+- [ ] Web and mobile device/browser smoke tests pass (native OAuth and Agora require Android/iOS development builds; Expo export alone does not compile native modules).
 - [ ] CI is green on the latest PR head (typecheck, tests, web/API builds and Android/iOS exports).
 
 ## Public information and verification
@@ -56,11 +56,12 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Build RSS/Atom/JSON Feed adapters with HTTPS-only SSRF/DNS-rebinding controls, bounded parsing, conditional requests, backoff and deduplication.\n- [x] Keep imported items private in staging; publication requires human review, source independence and a documented rights review.
 - [x] Initial agency directory entries are source-linked to official agency-owned pages; contact numbers carry per-entry source links and review dates.
 - [ ] Media rights, malware scanning, metadata removal and moderation are implemented.
+- [ ] Agora stream recording is not enabled; confirm provider-side recording is disabled and retention/deletion controls before launch.
 
 ## Emergency features and launch
 - [ ] SOS is designed with consent, location expiry, revocation, authorized recipients and audit trails.
 - [ ] A staffed response/escalation operation exists before SOS is enabled.
-- [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval, time-limited sessions and abuse report intake (code and tests added; CI validation pending); subscriber tokens remain disabled until Agora co-host authentication is enabled in the Agora Console and AGORA_CO_HOST_AUTH_ENABLED=true is explicitly configured; web/native SDK playback/publishing, bandwidth controls and device testing remain outstanding.
+- [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval/rejection, active-stream moderation, time-limited sessions, abuse report intake and token renewal (code and tests added; CI validation pending). Audience tokens remain disabled unless AGORA_AUDIENCE_TOKEN_ENABLED=true is deliberately configured. Web `agora-rtc-sdk-ng` and native `react-native-agora` publisher/viewer clients are implemented; physical-device builds, Agora account configuration, moderation staffing, low-bandwidth validation and launch safety review remain outstanding.
 - [ ] NDPA 2023/privacy review, DPIA where appropriate, retention and breach plans are complete.
 - [ ] Account deletion request workflow and privacy-rights request/audit endpoints (implementation added; CI validation pending); identity-provider deletion automation, NDPA review and App Store/Play disclosures remain outstanding.
 - [ ] Independent security review and incident-response exercise are complete.

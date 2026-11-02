@@ -3,8 +3,8 @@
 Nigeria-focused public-safety information platform. Web, Android and iOS clients share one Express API, PostgreSQL database and Zod contracts.
 
 ## Workspace
-- `apps/web`: responsive Next.js incident feed, official agency directory, OIDC-backed report form (`/report`) and moderator console (`/moderation`).
-- `apps/mobile`: Expo React Native incident feed, official agency directory and OIDC-authenticated report submission for Android and iOS.
+- `apps/web`: responsive Next.js incident feed, official agency directory, OIDC-backed report form (`/report`) and moderator console (`/moderation`) and Agora live-video interface (`/live`).
+- `apps/mobile`: Expo React Native incident feed, official agency directory and OIDC-authenticated report submission and Agora native live-video interface for Android and iOS.
 - `apps/api`: Express 5 API, OIDC authentication, report intake, moderation endpoints and PostgreSQL access.
 - `packages/contracts`: shared Zod request/response contracts.
 - `database/migrations`: PostgreSQL schema, approved-source registry, reports, moderation audit and source-linked agency contacts.
@@ -68,6 +68,10 @@ The API verifies JWT signatures using the remote JWKS, validates issuer/audience
 - `POST /v1/reports`: authenticated report intake. Stores reports privately as pending review; no phone, email or exact coordinates are collected. Maximum five reports per account per hour.
 - `GET /v1/reports/mine`: authenticated member's own report status only.
 - `GET /v1/moderation/reports`: moderator/admin-only pending queue; reporter identity is not returned.
+- `GET /v1/live-sessions`: approved live sessions only.
+- `GET /v1/live-sessions/mine`: authenticated broadcaster's own session requests.
+- `POST /v1/live-sessions`: submit a broadcast request with all safety acknowledgements.
+- `GET /v1/live-sessions/moderation/queue` and `/moderation/live`: moderator-only pending and active broadcasts.
 - `GET /v1/moderation/sources`: moderator/admin-only approved evidence sources.
 - `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
 
@@ -87,16 +91,16 @@ The web report form is available at `/report`; the native report form is availab
 The Express API has server-side Agora RTC token generation and a moderated live-session lifecycle:
 - Authenticated broadcaster requests require explicit safety acknowledgements and enter a moderator queue.
 - Only approved broadcasters can start a session; sessions expire automatically from the public listing.
-- Short-lived publisher tokens are issued only to the session owner. Subscriber tokens are withheld unless Agora co-host authentication is enabled in the Agora Console and `AGORA_AUDIENCE_TOKEN_ENABLED=true` is deliberately configured.
+- Short-lived publisher tokens are issued only to the session owner. Audience tokens are withheld by default. An operator must deliberately set `AGORA_AUDIENCE_TOKEN_ENABLED=true` after validating Agora App Certificate token authentication and the moderation operation.
 - Viewers can report abuse; moderators can inspect and resolve those reports. The App Certificate remains server-side.
 
-This is a backend foundation, not a finished live-video feature. Web and native Agora SDK clients, device testing, operational moderation, bandwidth controls and retention operations are still required. SOS and responder dispatch are not implemented.
+The web client uses `agora-rtc-sdk-ng`; Android/iOS use `react-native-agora`. Both request media only when a user explicitly starts an approved broadcast and renew short-lived RTC tokens. The native SDK still requires physical-device development builds. Agora credentials, viewer-token enablement, moderation staffing, bandwidth testing, retention operations and production smoke tests remain launch gates. SOS and responder dispatch are not implemented.
 
 ## Privacy API
 
 Authenticated users can submit privacy-rights requests and request local account erasure. Erasure disables local access, writes a tombstone to prevent account recreation and ends/cancels the user's active or pending broadcasts. Identity-provider account deletion remains a manual provider-side operation; a successful local request is not represented as full external deletion.
 
 ## Safety and launch gates
-NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains disabled until Agora credentials, web/mobile SDK clients, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
+NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains unavailable until Agora credentials, audience-token enablement, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 
 Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is not a launch-ready emergency-response system.

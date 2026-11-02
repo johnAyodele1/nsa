@@ -23,8 +23,8 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Feed query excludes unpublished and soft-deleted incidents.
 - [x] Feed pagination uses a composite timestamp/id cursor.
 - [x] API response is checked against the shared Zod schema.
-- [ ] PostgreSQL integration tests run against the real migration.
-- [ ] Validate migrations from an empty database in CI.
+- [x] PostgreSQL integration tests run against the real migration.
+- [x] Migrations are applied from an empty PostgreSQL database in CI and verified as idempotent.
 - [ ] Add database role separation and explicit least-privilege grants.
 - [ ] Add request correlation IDs and structured production logging.
 - [ ] Add API authentication, authorization and abuse controls before accepting reports.
@@ -34,14 +34,14 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.
 - [x] pnpm typecheck passes on the current branch.
-- [x] pnpm test passes on the current branch.
+- [x] pnpm test passes on the current branch, including PostgreSQL integration tests.
 - [x] pnpm build passes on the current branch.
 - [ ] Expo dependency compatibility check passes.
 - [ ] Web and mobile smoke tests pass.
 - [x] CI is green on the latest PR head (typecheck, tests and builds).
 
 ## Public information and verification
-- [ ] Source registry records publisher, canonical URL, terms, licence, attribution, polling rules and retention.
+- [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
 - [ ] Only approved public feeds/APIs are ingested.
 - [ ] Ingested claims remain pending until human review.
 - [ ] Corroboration and official confirmation have distinct documented criteria.

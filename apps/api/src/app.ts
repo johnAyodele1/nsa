@@ -4,7 +4,7 @@ import helmet from "helmet";
 import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
-import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema} from "@nsa/contracts";
+import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined};
 const encodeCursor=(payload:{publishedAt:string;id:string})=>Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -95,6 +95,17 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
    await client.query("COMMIT");transactionOpen=false;return res.status(200).json({data:{reportId:id.data,status:"approved",incidentId:incident.id}});
   }catch(error){if(transactionOpen&&client){try{await client.query("ROLLBACK");}catch(rollbackError){console.error("Moderation transaction rollback failed",rollbackError);}}return next(error);}
   finally{client?.release();}
+ });
+ app.get("/v1/agencies",async(_req,res,next)=>{
+  if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  try{
+   const result=await pool.query(`SELECT a.id,a.name,a.acronym,a.scope,a.description,a.official_website,a.source_url,a.source_verified_at,a.next_review_at,
+    COALESCE(json_agg(json_build_object('id',c.id,'label',c.label,'phoneNumber',c.phone_number,'contactType',c.contact_type,'sourceUrl',c.source_url,'verifiedAt',c.verified_at) ORDER BY c.display_order) FILTER(WHERE c.id IS NOT NULL),'[]'::json) AS contacts
+    FROM agency_directory a LEFT JOIN agency_contacts c ON c.agency_id=a.id AND c.is_active IS TRUE
+    WHERE a.is_active IS TRUE GROUP BY a.id ORDER BY a.scope ASC,a.name ASC`);
+   const data=result.rows.map(row=>({id:row.id,name:row.name,acronym:row.acronym,scope:row.scope,description:row.description,officialWebsite:row.official_website,sourceUrl:row.source_url,sourceVerifiedAt:new Date(row.source_verified_at).toISOString(),nextReviewAt:new Date(row.next_review_at).toISOString(),contacts:row.contacts.map((contact:{id:string;label:string;phoneNumber:string;contactType:string;sourceUrl:string;verifiedAt:string})=>({...contact,verifiedAt:new Date(contact.verifiedAt).toISOString()}))}));
+   return res.status(200).json(agencyDirectoryResponseSchema.parse({data}));
+  }catch(error){return next(error);}
  });
  app.get("/v1/incidents",async(req,res,next)=>{
   const parsed=incidentQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});

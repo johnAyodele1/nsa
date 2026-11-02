@@ -32,7 +32,17 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records both migrations once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql"]);
+ });
+ it("serves the official agency directory with source-linked contact details",async()=>{
+  const response=await request(app).get("/v1/agencies").expect(200);
+  expect(response.body.data.length).toBeGreaterThanOrEqual(4);
+  const lasema=response.body.data.find((agency:{acronym:string})=>agency.acronym==="LASEMA");
+  expect(lasema).toMatchObject({name:"Lagos State Emergency Management Agency",scope:"Lagos State",sourceUrl:"https://lasema.com.ng/contact/"});
+  expect(lasema.contacts.map((contact:{phoneNumber:string})=>contact.phoneNumber)).toEqual(expect.arrayContaining(["112","767","+2347035438447"]));
+  const efcc=response.body.data.find((agency:{acronym:string})=>agency.acronym==="EFCC");
+  expect(efcc.contacts.some((contact:{phoneNumber:string})=>contact.phoneNumber==="+2348093322644")).toBe(true);
+  expect(response.body.data.every((agency:{sourceUrl:string;sourceVerifiedAt:string;nextReviewAt:string})=>agency.sourceUrl.startsWith("https://")&&new Date(agency.nextReviewAt)>new Date(agency.sourceVerifiedAt))).toBe(true);
  });
  it("publishes only reviewed records and paginates correctly when timestamps tie",async()=>{
   const first=await request(app).get("/v1/incidents?limit=1").expect(200);expect(first.body.data).toHaveLength(1);expect(first.body.data[0].title).toBe("Published first incident");expect(first.body.nextCursor).toBeTypeOf("string");

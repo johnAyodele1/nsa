@@ -46,7 +46,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] pnpm build passes on the current branch head, including Android/iOS Expo exports.
 - [x] Expo dependency compatibility check passes in CI.
 - [ ] Web and mobile device/browser smoke tests pass (native OAuth and Agora require Android/iOS development builds; Expo export alone does not compile native modules).
-- [x] CI is green on the latest PR head (run 41474030092: typecheck, tests, PostgreSQL integration tests, web/API builds and Android/iOS Expo exports).
+- [x] CI is green on the latest PR head (run 41497537070: typecheck, unit tests, PostgreSQL integration tests, web/API builds and Android/iOS Expo exports).
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
@@ -65,9 +65,9 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [ ] A real responder integration is contracted, implemented against the partner's documented API, penetration-tested and operationally rehearsed; no dispatch integration is currently active.
 - [ ] Trusted-recipient workflows, explicit location-sharing consent, location expiry/revocation audit and staffed escalation are implemented and tested before dispatch launch.
 - [ ] A staffed response/escalation operation exists before SOS is enabled.
-- [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval/rejection, active-stream moderation, time-limited sessions, abuse report intake and token renewal (code and tests added; CI validation pending). Audience tokens remain disabled unless AGORA_AUDIENCE_TOKEN_ENABLED=true is deliberately configured. Web `agora-rtc-sdk-ng` and native `react-native-agora` publisher/viewer clients are implemented; physical-device builds, Agora account configuration, moderation staffing, low-bandwidth validation and launch safety review remain outstanding.
+- [x] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval/rejection, active-stream moderation, time-limited sessions, abuse report intake and token renewal; typecheck, unit tests, PostgreSQL integration tests and builds pass on CI run 41497537070. Audience tokens remain disabled unless `AGORA_AUDIENCE_TOKEN_ENABLED=true` is deliberately configured. Web `agora-rtc-sdk-ng` and native `react-native-agora` publisher/viewer clients are implemented; physical-device builds, Agora account configuration, moderation staffing, low-bandwidth validation and launch safety review remain outstanding.
 - [ ] NDPA 2023 legal review and DPIA are signed off by qualified privacy counsel/DPO; lawful bases, controller/processor roles, retention schedule, data-subject notices and breach response plan are approved. Engineering preparation is in docs/PRIVACY_NDPA_REVIEW.md.
-- [x] Account deletion request intake, local access disablement, privacy-rights request/status and append-only audit endpoints are implemented and covered by CI. Identity-provider deletion automation, final deletion verification, NDPA review and App Store/Play disclosures remain outstanding.
+- [x] Account deletion request intake, local access disablement, privacy-rights request/status and append-only audit endpoints are implemented; typecheck, unit tests, PostgreSQL integration tests and builds pass on CI run 41497537070. Identity-provider deletion automation, final deletion verification, NDPA review and App Store/Play disclosures remain outstanding.
 - [ ] Independent security review and incident-response exercise are complete.
 
 ## Working rules

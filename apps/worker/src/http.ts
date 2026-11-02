@@ -1,7 +1,8 @@
 import {lookup} from "node:dns/promises";
+import {lookup as callbackLookup} from "node:dns";
 import {Agent,request} from "undici";
 import ipaddr from "ipaddr.js";
-import type {LookupFunction} from "node:dns";
+type LookupFunction=typeof callbackLookup;
 
 const MAX_BYTES=1_000_000;
 function isPublicAddress(address:string):boolean {try{return ipaddr.parse(address).range()==="unicast";}catch{return false;}}
@@ -29,7 +30,7 @@ export async function fetchPublicFeed(rawUrl:string,headers:{etag?:string|null;l
  for(let redirects=0;redirects<=3;redirects++){
   const url=await validatePublicHttpsUrl(current);const dispatcher=await pinnedAgent(url.hostname);
   try{
-   const response=await request(url,{method:"GET",headers:{accept:"application/rss+xml, application/atom+xml, application/feed+json, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.7","user-agent":"NSA-Public-Information-Ingestion/1.0 (+source-contact-required)",...(headers.etag?{"if-none-match":headers.etag}:{}),...(headers.lastModified?{"if-modified-since":headers.lastModified}:{})},maxRedirections:0,headersTimeout:10000,bodyTimeout:10000,maxResponseSize:MAX_BYTES,dispatcher});
+   const response=await request(url,{method:"GET",headers:{accept:"application/rss+xml, application/atom+xml, application/feed+json, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.7","user-agent":"NSA-Public-Information-Ingestion/1.0 (+source-contact-required)",...(headers.etag?{"if-none-match":headers.etag}:{}),...(headers.lastModified?{"if-modified-since":headers.lastModified}:{})},headersTimeout:10000,bodyTimeout:10000,maxResponseSize:MAX_BYTES,dispatcher});
    if([301,302,303,307,308].includes(response.statusCode)){const location=response.headers.location;if(typeof location!=="string"||redirects===3)throw new Error("FEED_REDIRECT_LIMIT");current=new URL(location,url).toString();continue;}
    if(response.statusCode===304)return {status:304,body:"",etag:typeof response.headers.etag==="string"?response.headers.etag:headers.etag??null,lastModified:typeof response.headers["last-modified"]==="string"?response.headers["last-modified"]:headers.lastModified??null,contentType:null};
    if(response.statusCode!==200)throw new Error("FEED_HTTP_STATUS");

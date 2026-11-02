@@ -4,7 +4,7 @@ import helmet from "helmet";
 import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
-import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema} from "@nsa/contracts";
+import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined};
 const encodeCursor=(payload:{publishedAt:string;id:string})=>Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -44,6 +44,12 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
   }catch(error){if(transactionOpen&&client){try{await client.query("ROLLBACK");}catch(rollbackError){console.error("Report transaction rollback failed",rollbackError);}}return next(error);}
   finally{client?.release();}
  });
+ app.get("/v1/reports/mine",authenticate,async(req,res,next)=>{
+  const parsed=reportListQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  const auth=res.locals.auth;if(!auth?.subject)return res.status(401).json({error:"UNAUTHORIZED"});
+  try{const result=await pool.query("SELECT r.id,r.title,r.status,r.created_at,r.reviewed_at,r.incident_id FROM incident_reports r JOIN app_users u ON u.id=r.reporter_id WHERE u.auth_subject=$1 ORDER BY r.created_at DESC,r.id DESC LIMIT $2",[auth.subject,parsed.data.limit]);const data=result.rows.map(row=>({id:row.id,title:row.title,status:row.status,createdAt:new Date(row.created_at).toISOString(),reviewedAt:row.reviewed_at?new Date(row.reviewed_at).toISOString():null,incidentId:row.incident_id}));return res.status(200).json(reportListResponseSchema.parse({data}));}
+  catch(error){return next(error);}
+ });
  app.get("/v1/moderation/reports",authenticate,requireModerator(pool),async(req,res,next)=>{
   const parsed=moderationQueueQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   try{const result=await pool.query("SELECT id,title,summary,category,state,locality,occurred_at,source_url,created_at FROM incident_reports WHERE status='pending_review' ORDER BY created_at ASC,id ASC LIMIT $1",[parsed.data.limit]);const data=result.rows.map(row=>({id:row.id,title:row.title,summary:row.summary,category:row.category,state:row.state,locality:row.locality,occurredAt:new Date(row.occurred_at).toISOString(),sourceUrl:row.source_url,createdAt:new Date(row.created_at).toISOString()}));return res.status(200).json({data});}
@@ -64,8 +70,7 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
     await client.query("INSERT INTO report_moderation_audit(report_id,actor_id,action,reason) VALUES($1,$2,'reject',$3)",[id.data,moderator.id,parsed.data.reason]);
     await client.query("COMMIT");transactionOpen=false;return res.status(200).json({data:{reportId:id.data,status:"rejected",incidentId:null}});
    }
-   const verificationStatus=parsed.data.verificationStatus;
-   if(!verificationStatus){await client.query("ROLLBACK");transactionOpen=false;return res.status(400).json({error:"VERIFICATION_STATUS_REQUIRED"});}
+   const verificationStatus=parsed.data.verificationStatus;if(!verificationStatus){await client.query("ROLLBACK");transactionOpen=false;return res.status(400).json({error:"VERIFICATION_STATUS_REQUIRED"});}
    const evidence=parsed.data.sources??[];const sourceIds=evidence.map(source=>source.sourceRegistryId);
    const sourceResult=await client.query("SELECT id,publisher_name,display_name,canonical_url,is_official FROM source_registry WHERE id=ANY($1::uuid[]) AND approval_status='approved' AND robots_allowed IS TRUE AND terms_reviewed_at IS NOT NULL FOR SHARE",[sourceIds]);
    if(sourceResult.rows.length!==evidence.length){await client.query("ROLLBACK");transactionOpen=false;return res.status(422).json({error:"SOURCE_NOT_APPROVED"});}

@@ -7,7 +7,7 @@ import {z} from "zod";
 import {createIngestionRouter} from "./ingestion.js";
 import {createLiveRouter,type AgoraConfig} from "./live.js";
 import {createPrivacyRouter} from "./privacy.js";
-import {createHash} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
 import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined;agoraConfig?:AgoraConfig};
@@ -23,7 +23,17 @@ function requireModerator(pool:Pool|null):RequestHandler{
  };
 }
 export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Dependencies){
- const app=express();app.disable("x-powered-by");app.disable("etag");app.use(helmet());
+ const app=express();app.disable("x-powered-by");app.disable("etag");
+ app.use((req,res,next)=>{
+  const requestId=randomUUID();const startedAt=process.hrtime.bigint();
+  res.locals.requestId=requestId;res.setHeader("x-request-id",requestId);
+  res.on("finish",()=>{
+   const durationMs=Number(process.hrtime.bigint()-startedAt)/1_000_000;
+   console.info(JSON.stringify({level:"info",event:"http_request",requestId,method:req.method,path:req.path,statusCode:res.statusCode,durationMs:Math.round(durationMs*100)/100}));
+  });
+  next();
+ });
+ app.use(helmet());
  app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.includes(origin))return callback(null,true);return callback(null,false);},methods:["GET","POST"],allowedHeaders:["Content-Type","Authorization"],maxAge:600}));
  app.use(express.json({limit:"64kb",strict:true}));
  app.use("/v1",rateLimit({windowMs:60000,limit:120,standardHeaders:"draft-8",legacyHeaders:false,message:{error:"RATE_LIMITED"}}));
@@ -127,5 +137,5 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
   }catch(error){return next(error);}
  });
  app.use((_req,res)=>res.status(404).json({error:"NOT_FOUND"}));
- const errorHandler:ErrorRequestHandler=(error,_req,res,_next)=>{if(res.headersSent)return;if(error instanceof SyntaxError&&"body"in error){res.status(400).json({error:"INVALID_JSON"});return;}console.error("Unhandled API error",error);res.status(500).json({error:"INTERNAL_SERVER_ERROR"});};app.use(errorHandler);return app;
+ const errorHandler:ErrorRequestHandler=(error,_req,res,_next)=>{if(res.headersSent)return;if(error instanceof SyntaxError&&"body"in error){res.status(400).json({error:"INVALID_JSON"});return;}console.error(JSON.stringify({level:"error",event:"unhandled_api_error",requestId:res.locals.requestId??null,errorName:error instanceof Error?error.name:"UnknownError"}));res.status(500).json({error:"INTERNAL_SERVER_ERROR"});};app.use(errorHandler);return app;
 }

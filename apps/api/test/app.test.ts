@@ -9,6 +9,19 @@ const auth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"oidc|membe
 describe("Express API",()=>{
  it("serves liveness without a database",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).get("/health/live").expect(200,{status:"ok"});});
  it("reports database readiness accurately",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).get("/health/ready").expect(503);});
+ it("assigns server-generated request IDs and emits structured completion logs",async()=>{
+  const log=vi.spyOn(console,"info").mockImplementation(()=>{});
+  try{
+   const app=createApp({pool:null,allowedOrigins:[]});
+   const response=await request(app).get("/health/live").set("x-request-id","untrusted-client-value").expect(200);
+   expect(response.headers["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/i);
+   expect(response.headers["x-request-id"]).not.toBe("untrusted-client-value");
+   expect(log).toHaveBeenCalledOnce();
+   const entry=JSON.parse(String(log.mock.calls[0]?.[0]));
+   expect(entry).toMatchObject({level:"info",event:"http_request",requestId:response.headers["x-request-id"],method:"GET",path:"/health/live",statusCode:200});
+   expect(entry.durationMs).toEqual(expect.any(Number));
+  }finally{log.mockRestore();}
+ });
  it("rejects invalid filters before querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?limit=500").expect(400);expect(query).not.toHaveBeenCalled();});
  it("returns feed records and applies the composite cursor to SQL",async()=>{const query=vi.fn().mockResolvedValue({rows:[incident,{...incident,id:"3f4e4b18-22b5-4d14-bbcb-17c48edc05d2"}]});const app=createApp({pool:{query} as never,allowedOrigins:[]});const cursor=Buffer.from(JSON.stringify({publishedAt:"2026-11-02T08:45:00.000Z",id:"4f4e4b18-22b5-4d14-bbcb-17c48edc05d3"})).toString("base64url");const response=await request(app).get(`/v1/incidents?limit=1&cursor=${cursor}`).expect(200);expect(response.body.data).toHaveLength(1);expect(response.body.nextCursor).toBeTypeOf("string");expect(query.mock.calls[0]?.[0]).toContain("status = 'published'");expect(query.mock.calls[0]?.[0]).toContain("(published_at,id) <");});
  it("rejects malformed cursors without querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?cursor=bad").expect(400,{error:"INVALID_CURSOR"});expect(query).not.toHaveBeenCalled();});

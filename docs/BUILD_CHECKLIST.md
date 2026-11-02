@@ -5,6 +5,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Foundation
 - [x] Monorepo separates web, mobile, API, shared contracts and database migrations.
 - [x] Web and mobile consume the same API contract.
+- [x] Web and mobile expose the same source-linked agency directory API.
 - [x] Both clients support Nigeria state/category filters and cursor-based load-more pagination.
 - [x] Express 5 is the only HTTP server framework; Fastify is removed.
 - [x] PostgreSQL is the persistent data store.
@@ -34,7 +35,8 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Members can read only their own report statuses.
 - [x] Moderator/admin access is checked against database roles.
 - [x] Moderation decisions are transactional and audited.
-- [ ] Build the moderator web console and mobile report form.
+- [x] Build a moderator web console with short-lived token handling, approved source selection and evidence-aware decisions.
+- [ ] Integrate browser SSO/BFF sessions and build the mobile member report form.
 
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.
@@ -48,10 +50,10 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
 - [x] Corroborated reports require two distinct publishers; official confirmation requires an approved official source.
-- [ ] Only approved public feeds/APIs are ingested.
+- [ ] Only approved public feeds/APIs are ingested. (No ingestion is enabled yet.)
 - [x] Submitted reports remain pending until human review.
 - [ ] Build approved source ingestion adapters with attribution, deduplication and rate limits.
-- [ ] Agency directory entries are verified against official agency-owned sources.
+- [x] Initial agency directory entries are source-linked to official agency-owned pages; contact numbers carry per-entry source links and review dates.
 - [ ] Media rights, malware scanning, metadata removal and moderation are implemented.
 
 ## Emergency features and launch

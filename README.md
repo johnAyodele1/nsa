@@ -3,11 +3,11 @@
 Nigeria-focused public-safety information platform. Web, Android and iOS clients share one Express API, PostgreSQL database and Zod contracts.
 
 ## Workspace
-- `apps/web`: responsive Next.js public incident feed.
-- `apps/mobile`: Expo React Native incident feed for Android and iOS.
+- `apps/web`: responsive Next.js incident feed, official agency directory and moderator console (`/moderation`).
+- `apps/mobile`: Expo React Native incident feed and official agency directory for Android and iOS.
 - `apps/api`: Express 5 API, OIDC authentication, report intake, moderation endpoints and PostgreSQL access.
 - `packages/contracts`: shared Zod request/response contracts.
-- `database/migrations`: PostgreSQL schema, source registry, reports and moderation audit.
+- `database/migrations`: PostgreSQL schema, approved-source registry, reports, moderation audit and source-linked agency contacts.
 - `apps/worker`: ingestion policy boundary; no scraper or auto-publisher is enabled.
 - `docs/BUILD_CHECKLIST.md`: cross-checked delivery checklist and remaining work.
 
@@ -35,12 +35,13 @@ The API verifies JWT signatures using the remote JWKS, validates issuer/audience
 
 ## API surface
 - `GET /v1/incidents`: published incidents only; supports Nigeria state/category filters and stable cursor pagination.
+- `GET /v1/agencies`: official contact directory with contact-level source URLs and review dates.
 - `POST /v1/reports`: authenticated report intake. Stores reports privately as pending review; no phone, email or exact coordinates are collected. Maximum five reports per account per hour.
 - `GET /v1/reports/mine`: authenticated member's own report status only.
 - `GET /v1/moderation/reports`: moderator/admin-only pending queue; reporter identity is not returned.
 - `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
 
-The moderation API exists, but a moderator web console and mobile report form are not implemented yet. Source registry records must currently be provisioned by an authorized operator. No automatic ingestion adapter is enabled.
+The moderator web console is available at `/moderation`. It currently accepts a short-lived OIDC access token pasted by an authorized operator; the token stays in page memory and is not persisted. A full browser SSO/BFF session and mobile member report form are not implemented yet. Source registry records must currently be provisioned by an authorized operator. No automatic ingestion adapter is enabled.
 
 ## Verified engineering baseline
 - Express 5 with injectable app, Helmet, explicit CORS allowlist, bounded JSON bodies and API rate limiting.
@@ -52,6 +53,6 @@ The moderation API exists, but a moderator web console and mobile report form ar
 - CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and workspace builds.
 
 ## Safety and launch gates
-NSA is independent, not a government agency or emergency dispatch service. SOS, dispatch and live streaming are not operational. No fake incidents or agency contact details are seeded. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
+NSA is independent, not a government agency or emergency dispatch service. SOS, dispatch and live streaming are not operational. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 
 Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is not a launch-ready emergency-response system.

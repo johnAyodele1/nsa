@@ -28,7 +28,7 @@ jobs:
         env:
           BRANCH_NAME: ${GITHUB_REF_NAME}
         run: |
-          if git diff --quiet -- pnpm-lock.yaml; then
+          if [ -z "$(git status --porcelain -- pnpm-lock.yaml)" ]; then
             echo "Lockfile is already current."
             exit 0
           fi

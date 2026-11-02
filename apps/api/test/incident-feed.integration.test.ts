@@ -40,7 +40,13 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident feed integration",()=>{
  it("rejects incident locations outside Nigeria",async()=>{
   await expect(pool.query("INSERT INTO incidents(title,summary,category,state,occurred_at) VALUES($1,$2,$3,$4,now())",["Invalid geography report","This report should fail because its location is not within Nigeria.","robbery","Accra"])).rejects.toThrow();
  });
+ it("does not allow an unverified or source-less incident to be published",async()=>{
+  await expect(pool.query("INSERT INTO incidents(title,summary,category,state,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at) VALUES($1,$2,$3,$4,now(),now(),'unverified','published',0,NULL,$5,now())",["Unverified public claim","This claim has not been corroborated and must not be published as a fact.","robbery","Lagos","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();
+ });
  it("does not allow an unreviewed source to be marked approved",async()=>{
   await expect(pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,approval_status) VALUES($1,$2,$3,$4,$5,$6)",["Unreviewed Publisher","Unreviewed Feed","https://example.org","https://example.org/feed.xml","rss","approved"])).rejects.toThrow();
+ });
+ it("does not approve sources that disallow robots access",async()=>{
+  await expect(pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,robots_checked_at,robots_allowed,terms_reviewed_at,approval_status,approved_by,approved_at) VALUES($1,$2,$3,$4,$5,now(),false,now(),'approved',$6,now())",["Blocked Publisher","Blocked Feed","https://blocked.example","https://blocked.example/feed.xml","rss","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();
  });
 });

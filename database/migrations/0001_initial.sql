@@ -18,13 +18,17 @@ CREATE TABLE source_registry(
  licence_name varchar(160),
  attribution_text varchar(500),
  polling_interval_seconds integer NOT NULL DEFAULT 1800 CHECK(polling_interval_seconds BETWEEN 300 AND 86400),
+ retention_days integer NOT NULL DEFAULT 90 CHECK(retention_days BETWEEN 1 AND 3650),
+ robots_checked_at timestamptz,
+ robots_allowed boolean,
+ terms_reviewed_at timestamptz,
  approval_status source_approval_status NOT NULL DEFAULT 'pending',
  approved_by uuid,
  approved_at timestamptz,
  last_checked_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
- CHECK(approval_status<>'approved' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL))
+ CHECK(approval_status<>'approved' OR (approved_by IS NOT NULL AND approved_at IS NOT NULL AND robots_checked_at IS NOT NULL AND robots_allowed IS TRUE AND terms_reviewed_at IS NOT NULL))
 );
 
 CREATE TABLE incidents(
@@ -45,7 +49,7 @@ CREATE TABLE incidents(
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  deleted_at timestamptz,
- CHECK(status<>'published' OR (published_at IS NOT NULL AND reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL))
+ CHECK(status<>'published' OR (published_at IS NOT NULL AND reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL AND verification_status<>'unverified' AND source_count>=1 AND public_source_url IS NOT NULL))
 );
 CREATE INDEX incidents_public_feed_idx ON incidents(published_at DESC,id DESC) WHERE status='published' AND deleted_at IS NULL;
 CREATE INDEX incidents_state_feed_idx ON incidents(state,published_at DESC,id DESC) WHERE status='published' AND deleted_at IS NULL;

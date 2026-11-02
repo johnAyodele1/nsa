@@ -8,7 +8,6 @@ Nigeria-focused public-safety information platform. Web, Android and iOS clients
 - `apps/api`: Express 5 API, OIDC authentication, report intake, moderation endpoints and PostgreSQL access.
 - `packages/contracts`: shared Zod request/response contracts.
 - `database/migrations`: PostgreSQL schema, approved-source registry, reports, moderation audit and source-linked agency contacts.
-- `apps/worker`: ingestion policy boundary; no scraper or auto-publisher is enabled.
 - `docs/BUILD_CHECKLIST.md`: cross-checked delivery checklist and remaining work.
 
 ## Local development
@@ -36,6 +35,8 @@ Report submission and moderation are disabled until OIDC is configured. Set the 
 - `EXPO_PUBLIC_OIDC_ISSUER_URL`: HTTPS issuer used by the native authorization-code + PKCE flow.
 - `EXPO_PUBLIC_OIDC_CLIENT_ID`: public native OIDC client ID with `nsa://auth/callback` registered as a redirect URI.
 - `EXPO_PUBLIC_OIDC_AUDIENCE`: API audience requested by the native client.
+
+Native sign-in redirects to `nsa://auth/callback`. Register that exact redirect URI with the identity provider. Because the app uses a custom native URL scheme, test OAuth on a development build or production build, not Expo Go. Build and install a development client before testing sign-in on a physical Android or iOS device.
 
 The API verifies JWT signatures using the remote JWKS, validates issuer/audience and accepts RS256 or ES256 only. Do not put a client secret or signing private key in this repository. The identity provider owns sign-in and account lifecycle. New authenticated users receive the `member` role; moderator/admin roles must be provisioned by an authorized operator directly in the database. Never expose role assignment to public clients.
 

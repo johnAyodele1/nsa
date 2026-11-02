@@ -18,6 +18,8 @@ export const reportModerationDecisionSchema=z.object({decision:z.enum(["approve"
  if(new Set(ids).size!==ids.length)ctx.addIssue({code:"custom",message:"Source registry IDs must be unique"});
 });
 export const moderationQueueQuerySchema=z.object({limit:z.coerce.number().int().min(1).max(50).default(20)}).strict();
+export const moderationSourceSchema=z.object({id:z.string().uuid(),publisherName:z.string().min(1).max(160),displayName:z.string().min(1).max(160),canonicalUrl:z.string().url(),isOfficial:z.boolean()}).strict();
+export const moderationSourceListResponseSchema=z.object({data:z.array(moderationSourceSchema)}).strict();
 export type Incident=z.infer<typeof incidentSchema>;
 export type IncidentCategory=z.infer<typeof incidentCategorySchema>;
 export type NigerianState=z.infer<typeof nigerianStateSchema>;

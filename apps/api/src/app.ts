@@ -4,7 +4,7 @@ import helmet from "helmet";
 import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
-import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema} from "@nsa/contracts";
+import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined};
 const encodeCursor=(payload:{publishedAt:string;id:string})=>Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -54,6 +54,14 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
   const parsed=moderationQueueQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   try{const result=await pool.query("SELECT id,title,summary,category,state,locality,occurred_at,source_url,created_at FROM incident_reports WHERE status='pending_review' ORDER BY created_at ASC,id ASC LIMIT $1",[parsed.data.limit]);const data=result.rows.map(row=>({id:row.id,title:row.title,summary:row.summary,category:row.category,state:row.state,locality:row.locality,occurredAt:new Date(row.occurred_at).toISOString(),sourceUrl:row.source_url,createdAt:new Date(row.created_at).toISOString()}));return res.status(200).json({data});}
   catch(error){return next(error);}
+ });
+ app.get("/v1/moderation/sources",authenticate,requireModerator(pool),async(_req,res,next)=>{
+  if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  try{
+   const result=await pool.query("SELECT id,publisher_name,display_name,canonical_url,is_official FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND terms_reviewed_at IS NOT NULL ORDER BY is_official DESC,publisher_name ASC LIMIT 100");
+   const data=result.rows.map(row=>({id:row.id,publisherName:row.publisher_name,displayName:row.display_name,canonicalUrl:row.canonical_url,isOfficial:row.is_official}));
+   return res.status(200).json(moderationSourceListResponseSchema.parse({data}));
+  }catch(error){return next(error);}
  });
  app.post("/v1/moderation/reports/:reportId/decision",authenticate,requireModerator(pool),async(req,res,next)=>{
   const id=z.string().uuid().safeParse(req.params.reportId);if(!id.success)return res.status(400).json({error:"INVALID_REPORT_ID"});

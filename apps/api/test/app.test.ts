@@ -40,7 +40,7 @@ describe("Express API",()=>{
   expect(client.release).toHaveBeenCalledOnce();
  });
  it("limits a member to five reports per hour",async()=>{
-  const client={query:vi.fn().mockResolvedValueOnce({}).mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",is_active:true}]}).mockResolvedValueOnce({}).mockResolvedValueOnce({rows:[{count:5}]}).mockResolvedValueOnce({}),release:vi.fn()};
+  const client={query:vi.fn().mockResolvedValueOnce({}).mockResolvedValueOnce({rowCount:0,rows:[]}).mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",is_active:true}]}).mockResolvedValueOnce({}).mockResolvedValueOnce({rows:[{count:5}]}).mockResolvedValueOnce({}),release:vi.fn()};
   const connect=vi.fn().mockResolvedValue(client);const app=createApp({pool:{connect} as never,allowedOrigins:[],authMiddleware:auth});
   await request(app).post("/v1/reports").send(reportBody).expect(429,{error:"REPORT_LIMIT_REACHED"});
   expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO incident_reports"),expect.anything());

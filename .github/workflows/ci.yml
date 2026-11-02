@@ -12,7 +12,7 @@ jobs:
         env:
           POSTGRES_DB: nsa_test
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-ci-only
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
         ports:
           - 5432:5432
         options: >-

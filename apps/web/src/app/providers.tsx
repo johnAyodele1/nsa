@@ -16,6 +16,6 @@ export function Providers({children}:{children:ReactNode}){
   void (async()=>{try{if(window.location.search.includes("code=")||window.location.search.includes("error=")){const callbackUser=await oidc.signinRedirectCallback();onLoaded(callbackUser);}else onLoaded(await oidc.getUser());}catch{setError("Sign-in could not be completed. Try signing in again.");}finally{window.history.replaceState({},document.title,window.location.pathname);if(mounted)setReady(true);}})();
   return()=>{mounted=false;oidc.events.removeUserLoaded(onLoaded);oidc.events.removeUserUnloaded(onUnloaded);oidc.events.removeAccessTokenExpired(onExpired);};
  },[]);
- const value=useMemo<AuthValue>(()=>({ready,configured:Boolean(manager),authenticated:Boolean(user&&!user.expired),accessToken:user&&!user.expired?user.access_token:null,error,signIn:async()=>{if(!manager)throw new Error("OIDC is not configured");await manager.signinRedirect();},signOut:async()=>{if(manager)await manager.signoutRedirect();}}),[ready,manager,user,error]);
+ const value=useMemo<AuthValue>(()=>({ready,configured:Boolean(manager&&process.env.NEXT_PUBLIC_OIDC_AUDIENCE),authenticated:Boolean(user&&!user.expired),accessToken:user&&!user.expired?user.access_token:null,error,signIn:async()=>{if(!manager)throw new Error("OIDC is not configured");await manager.signinRedirect();},signOut:async()=>{if(manager)await manager.signoutRedirect();}}),[ready,manager,user,error]);
  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

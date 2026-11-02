@@ -2,7 +2,6 @@ import {lookup} from "node:dns/promises";
 
 import {Agent,request} from "undici";
 import ipaddr from "ipaddr.js";
-type AgentLookup=NonNullable<NonNullable<ConstructorParameters<typeof Agent>[0]>["connect"]>["lookup"];
 
 const MAX_BYTES=1_000_000;
 async function readBounded(body:AsyncIterable<Uint8Array> & {destroy?:()=>void}):Promise<string>{const chunks:Buffer[]=[];let total=0;for await(const chunk of body){const bytes=Buffer.from(chunk);total+=bytes.length;if(total>MAX_BYTES){body.destroy?.();throw new Error("FEED_TOO_LARGE");}chunks.push(bytes);}return Buffer.concat(chunks,total).toString("utf8");}
@@ -19,11 +18,12 @@ async function pinnedAgent(hostname:string):Promise<Agent>{
  const addresses=await lookup(hostname,{all:true,verbatim:true});
  if(addresses.length===0||addresses.some(record=>!isPublicAddress(record.address)))throw new Error("UNSAFE_FEED_HOST");
  const selected=addresses[0];if(!selected)throw new Error("DNS_LOOKUP_FAILED");
- const pinnedLookup=((_name:string,options:unknown,callback:(...args:unknown[])=>void)=>{
+ const pinnedLookup=(_name:string,options:unknown,callback:(...args:unknown[])=>void)=>{
   if(typeof options==="object"&&options!==null&&"all"in options&&Boolean((options as {all?:boolean}).all))callback(null,addresses);
   else callback(null,selected.address,selected.family);
- }) as unknown as AgentLookup;
- return new Agent({connect:{lookup:pinnedLookup}});
+ };
+ const connectOptions={lookup:pinnedLookup} as unknown as NonNullable<ConstructorParameters<typeof Agent>[0]>["connect"];
+ return new Agent({connect:connectOptions});
 }
 export type FetchResult={status:number;body:string;etag:string|null;lastModified:string|null;contentType:string|null};
 export async function fetchPublicFeed(rawUrl:string,headers:{etag?:string|null;lastModified?:string|null}={}):Promise<FetchResult>{

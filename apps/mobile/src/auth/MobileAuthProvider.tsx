@@ -22,8 +22,7 @@ export function MobileAuthProvider({children}:{children:ReactNode}){
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState<string|null>(null);
  const redirectUri=useMemo(()=>AuthSession.makeRedirectUri({scheme:"nsa",path:"auth/callback"}),[]);
- const extraParams=useMemo<Record<string,string>>(()=>audience?{audience}:{},[audience]);
- const requestConfig=useMemo<AuthRequestConfig>(()=>({clientId:clientId||"not-configured",redirectUri,responseType:AuthSession.ResponseType.Code,scopes:["openid","profile"],usePKCE:true,extraParams}),[clientId,redirectUri,extraParams]);
+ const requestConfig=useMemo<AuthRequestConfig>(()=>{const extraParams:Record<string,string>={};if(audience)extraParams.audience=audience;return {clientId:clientId||"not-configured",redirectUri,responseType:AuthSession.ResponseType.Code,scopes:["openid","profile"],usePKCE:true,extraParams};},[clientId,redirectUri,audience]);
  const [request,response,promptAsync]=AuthSession.useAuthRequest(requestConfig,discovery);
  useEffect(()=>{
   let mounted=true;

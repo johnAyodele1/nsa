@@ -9,7 +9,8 @@ function isPublicAddress(address:string):boolean {try{return ipaddr.parse(addres
 export async function validatePublicHttpsUrl(raw:string):Promise<URL>{
  if(raw.length>2048)throw new Error("INVALID_FEED_URL");
  let url:URL;try{url=new URL(raw);}catch{throw new Error("INVALID_FEED_URL");}
- if(url.protocol!=="https:"||url.username||url.password||url.port&&url.port!=="443"||url.hostname==="localhost"||url.hostname.endsWith(".localhost")||url.hostname.endsWith(".local"))throw new Error("UNSAFE_FEED_URL");
+ const authority=raw.match(/^https:\/\/([^/?#]*)/i)?.[1]??"";
+ if(url.protocol!=="https:"||authority.includes("@")||url.port&&url.port!=="443"||url.hostname==="localhost"||url.hostname.endsWith(".localhost")||url.hostname.endsWith(".local"))throw new Error("UNSAFE_FEED_URL");
  const addresses=await lookup(url.hostname,{all:true,verbatim:true});
  if(addresses.length===0||addresses.some(record=>!isPublicAddress(record.address)))throw new Error("UNSAFE_FEED_HOST");
  return url;

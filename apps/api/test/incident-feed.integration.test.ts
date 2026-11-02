@@ -11,7 +11,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident feed integration",()=>{
  beforeAll(async()=>{
   const migration=await readFile(new URL("../../../database/migrations/0001_initial.sql",import.meta.url),"utf8");
   await pool.query(migration);
-  await pool.query("TRUNCATE moderation_audit,incident_sources,incidents RESTART IDENTITY CASCADE");
+  await pool.query("TRUNCATE moderation_audit,incident_sources,incidents,source_registry RESTART IDENTITY CASCADE");
   const insert=`INSERT INTO incidents(id,title,summary,category,state,locality,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`;
   const rows=[
@@ -36,5 +36,11 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident feed integration",()=>{
   const response=await request(app).get("/v1/incidents?state=Oyo").expect(200);
   expect(response.body.data).toHaveLength(1);
   expect(response.body.data[0].state).toBe("Oyo");
+ });
+ it("rejects incident locations outside Nigeria",async()=>{
+  await expect(pool.query("INSERT INTO incidents(title,summary,category,state,occurred_at) VALUES($1,$2,$3,$4,now())",["Invalid geography report","This report should fail because its location is not within Nigeria.","robbery","Accra"])).rejects.toThrow();
+ });
+ it("does not allow an unreviewed source to be marked approved",async()=>{
+  await expect(pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,approval_status) VALUES($1,$2,$3,$4,$5,$6)",["Unreviewed Publisher","Unreviewed Feed","https://example.org","https://example.org/feed.xml","rss","approved"])).rejects.toThrow();
  });
 });

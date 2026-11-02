@@ -1,16 +1,16 @@
 import {afterAll,beforeAll,describe,expect,it} from "vitest";
-import {readFile} from "node:fs/promises";
 import pg from "pg";
 import request from "supertest";
 import {createApp} from "../src/app.js";
+import {applyMigrations} from "../src/migrate.js";
 const {Pool}=pg;
 const databaseUrl=process.env.DATABASE_URL;
 describe.skipIf(!databaseUrl)("PostgreSQL incident feed integration",()=>{
  const pool=new Pool({connectionString:databaseUrl});
  const app=createApp({pool,allowedOrigins:[]});
  beforeAll(async()=>{
-  const migration=await readFile(new URL("../../../database/migrations/0001_initial.sql",import.meta.url),"utf8");
-  await pool.query(migration);
+  await applyMigrations(pool);
+  await applyMigrations(pool);
   await pool.query("TRUNCATE moderation_audit,incident_sources,incidents,source_registry RESTART IDENTITY CASCADE");
   const insert=`INSERT INTO incidents(id,title,summary,category,state,locality,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`;
@@ -22,6 +22,11 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident feed integration",()=>{
   for(const row of rows)await pool.query(insert,[...row]);
  });
  afterAll(async()=>{await pool.end();});
+ it("records migrations once and safely skips already-applied migrations",async()=>{
+  const result=await pool.query("SELECT version FROM schema_migrations");
+  expect(result.rows).toHaveLength(1);
+  expect(result.rows[0].version).toBe("0001_initial.sql");
+ });
  it("publishes only reviewed records and paginates correctly when timestamps tie",async()=>{
   const first=await request(app).get("/v1/incidents?limit=1").expect(200);
   expect(first.body.data).toHaveLength(1);

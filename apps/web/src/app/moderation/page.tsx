@@ -1,12 +1,10 @@
 "use client";
 import {useCallback,useMemo,useState} from "react";
-import {z} from "zod";
-import {moderationSourceListResponseSchema,reportModerationDecisionSchema,nigerianStateSchema,incidentCategorySchema,verificationStatusSchema} from "@nsa/contracts";
+import {moderationSourceListResponseSchema,moderationQueueResponseSchema,reportModerationDecisionSchema,type ModerationQueueItem,type ModerationSource,type VerificationStatus} from "@nsa/contracts";
 const API=process.env.NEXT_PUBLIC_API_URL??"http://localhost:4000";
-const queueSchema=z.object({data:z.array(z.object({id:z.string().uuid(),title:z.string(),summary:z.string(),category:incidentCategorySchema,state:nigerianStateSchema,locality:z.string().nullable(),occurredAt:z.string(),sourceUrl:z.string().nullable(),createdAt:z.string()}))});
-type QueueItem=z.infer<typeof queueSchema>["data"][number];
-type Source=z.infer<typeof moderationSourceListResponseSchema>["data"][number];
-type Verification=z.infer<typeof verificationStatusSchema>;
+type QueueItem=ModerationQueueItem;
+type Source=ModerationSource;
+type Verification=Exclude<VerificationStatus,"unverified">;
 type DecisionState={reason:string;verification:Verification;selected:string[];urls:Record<string,string>};
 export default function ModerationPage(){
  const [token,setToken]=useState("");const [authenticated,setAuthenticated]=useState(false);const [reports,setReports]=useState<QueueItem[]>([]);const [sources,setSources]=useState<Source[]>([]);const [loading,setLoading]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");const [decisions,setDecisions]=useState<Record<string,DecisionState>>({});
@@ -17,7 +15,7 @@ export default function ModerationPage(){
   try{const headers={Authorization:`Bearer ${token.trim()}`};const [queueResponse,sourceResponse]=await Promise.all([fetch(`${API}/v1/moderation/reports?limit=50`,{headers}),fetch(`${API}/v1/moderation/sources`,{headers})]);
    if([401,403].includes(queueResponse.status)||[401,403].includes(sourceResponse.status)){setAuthenticated(false);throw new Error("This token is not authorized to access the moderation console.");}
    if(!queueResponse.ok||!sourceResponse.ok)throw new Error("The moderation service is unavailable. Check the API and try again.");
-   const queue=queueSchema.parse(await queueResponse.json());const sourceData=moderationSourceListResponseSchema.parse(await sourceResponse.json());setReports(queue.data);setSources(sourceData.data);setAuthenticated(true);
+   const queue=moderationQueueResponseSchema.parse(await queueResponse.json());const sourceData=moderationSourceListResponseSchema.parse(await sourceResponse.json());setReports(queue.data);setSources(sourceData.data);setAuthenticated(true);
   }catch(e){setError(e instanceof Error?e.message:"Could not load the moderation queue.");}finally{setLoading(false);}
  },[token]);
  async function decide(report:QueueItem,decision:"approve"|"reject"){

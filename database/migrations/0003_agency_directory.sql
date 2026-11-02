@@ -21,7 +21,7 @@ CREATE TABLE agency_contacts(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  agency_id uuid NOT NULL REFERENCES agency_directory(id) ON DELETE CASCADE,
  label varchar(100) NOT NULL,
- phone_number varchar(20) NOT NULL CHECK(phone_number ~ '^(\\+234[0-9]{7,10}|0[0-9]{10}|[0-9]{3,6})$'),
+ phone_number varchar(20) NOT NULL CHECK(phone_number ~ '^([+]234[0-9]{7,10}|0[0-9]{10}|[0-9]{3,6})$'),
  contact_type varchar(20) NOT NULL CHECK(contact_type IN ('emergency','hotline','office')),
  source_url text NOT NULL CHECK(source_url LIKE 'https://%'),
  verified_at timestamptz NOT NULL,

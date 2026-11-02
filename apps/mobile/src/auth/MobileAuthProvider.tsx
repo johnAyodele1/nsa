@@ -2,7 +2,7 @@ import {createContext,useCallback,useContext,useEffect,useMemo,useState,type Rea
 import * as AuthSession from "expo-auth-session";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import type {DiscoveryDocument} from "expo-auth-session";
+import type {AuthRequestConfig,DiscoveryDocument} from "expo-auth-session";
 WebBrowser.maybeCompleteAuthSession();
 const TOKEN_KEY="nsa.access-token.v1";
 type StoredToken={accessToken:string;expiresAt:number};
@@ -22,7 +22,8 @@ export function MobileAuthProvider({children}:{children:ReactNode}){
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState<string|null>(null);
  const redirectUri=useMemo(()=>AuthSession.makeRedirectUri({scheme:"nsa",path:"auth/callback"}),[]);
- const requestConfig=useMemo(()=>({clientId:clientId||"not-configured",redirectUri,responseType:AuthSession.ResponseType.Code,scopes:["openid","profile"],usePKCE:true,extraParams:audience?{audience}:{}}),[clientId,redirectUri,audience]);
+ const extraParams=useMemo<Record<string,string>>(()=>audience?{audience}:{},[audience]);
+ const requestConfig=useMemo<AuthRequestConfig>(()=>({clientId:clientId||"not-configured",redirectUri,responseType:AuthSession.ResponseType.Code,scopes:["openid","profile"],usePKCE:true,extraParams}),[clientId,redirectUri,extraParams]);
  const [request,response,promptAsync]=AuthSession.useAuthRequest(requestConfig,discovery);
  useEffect(()=>{
   let mounted=true;
@@ -45,10 +46,11 @@ export function MobileAuthProvider({children}:{children:ReactNode}){
   if(!response)return;
   if(response.type==="error"){setError(response.error?.message??"Sign-in was not completed.");setBusy(false);return;}
   if(response.type!=="success")return;
-  if(!request?.codeVerifier||!discovery?.tokenEndpoint){setError("The secure sign-in request could not be completed.");setBusy(false);return;}
+  const code=response.params.code;const codeVerifier=request?.codeVerifier;
+  if(!code||!codeVerifier||!discovery?.tokenEndpoint){setError("The secure sign-in request could not be completed.");setBusy(false);return;}
   let active=true;
   void (async()=>{try{
-   const token=await AuthSession.exchangeCodeAsync({clientId,code:response.params.code,redirectUri,extraParams:{code_verifier:request.codeVerifier}},discovery);
+   const token=await AuthSession.exchangeCodeAsync({clientId,code,redirectUri,extraParams:{code_verifier:codeVerifier}},discovery);
    if(!token.accessToken||!token.expiresIn||token.expiresIn<=0)throw new Error("The identity provider returned an invalid access token.");
    const stored:StoredToken={accessToken:token.accessToken,expiresAt:Date.now()+token.expiresIn*1000};
    await SecureStore.setItemAsync(TOKEN_KEY,JSON.stringify(stored),{keychainAccessible:SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY});

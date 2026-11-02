@@ -7,7 +7,7 @@ export const incidentSchema = z.object({
  occurredAt:z.string().datetime(), publishedAt:z.string().datetime(), verificationStatus:verificationStatusSchema,
  sourceCount:z.number().int().min(0), publicSourceUrl:z.string().url().nullable()
 }).strict();
-export const incidentListResponseSchema=z.object({data:z.array(incidentSchema),nextCursor:z.string().nullable()}).strict();
-export const incidentQuerySchema=z.object({state:z.string().min(2).max(64).optional(),category:incidentCategorySchema.optional(),cursor:z.string().max(256).optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).strict();
+export const incidentListResponseSchema=z.object({data:z.array(incidentSchema),nextCursor:z.string().uuid().nullable()}).strict();
+export const incidentQuerySchema=z.object({state:z.string().min(2).max(64).optional(),category:incidentCategorySchema.optional(),cursor:z.string().uuid().optional(),limit:z.coerce.number().int().min(1).max(50).default(20)}).strict();
 export type Incident=z.infer<typeof incidentSchema>;
 export type IncidentCategory=z.infer<typeof incidentCategorySchema>;

@@ -37,33 +37,37 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Moderation decisions are transactional and audited.
 - [x] Build OIDC PKCE-backed web report submission/status and moderator review screens.
 - [x] Native OIDC authorization-code + PKCE login and mobile member report form use platform secure token storage; typecheck and Expo bundle exports pass.
-- [ ] Move browser access tokens behind a BFF HttpOnly cookie session (implementation and tests added; latest CI verification pending): server-side PKCE callback, encrypted database token storage, `__Host-` HttpOnly session cookie in production, CSRF checks and route-allowlisted API proxy; production OIDC/database/key configuration remains deployment work.
+- [x] Move browser access tokens behind a BFF HttpOnly cookie session: server-side PKCE callback, encrypted database token storage, `__Host-` HttpOnly session cookie in production, CSRF checks and route-allowlisted API proxy. Production OIDC/database/key configuration remains a deployment gate.
 
 ## Automated quality gates
 - [x] Commit `pnpm-lock.yaml`; `pnpm install --frozen-lockfile` passed in CI. Re-run on every dependency or manifest change.
-- [ ] pnpm typecheck passes on the current branch head after the current changes.
-- [ ] pnpm test passes on the current branch head, including PostgreSQL integration tests.
-- [ ] pnpm build passes on the current branch head, including Android/iOS Expo exports.
+- [x] pnpm typecheck passes on the current branch head.
+- [x] pnpm test passes on the current branch head, including PostgreSQL 17 integration tests.
+- [x] pnpm build passes on the current branch head, including Android/iOS Expo exports.
 - [x] Expo dependency compatibility check passes in CI.
 - [ ] Web and mobile device/browser smoke tests pass (native OAuth and Agora require Android/iOS development builds; Expo export alone does not compile native modules).
-- [ ] CI is green on the latest PR head (typecheck, tests, web/API builds and Android/iOS exports).
+- [x] CI is green on the latest PR head (run 41474030092: typecheck, tests, PostgreSQL integration tests, web/API builds and Android/iOS Expo exports).
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
 - [x] Corroborated reports require two distinct publishers; official confirmation requires an approved official source.
 - [x] Worker polls only approved, robots-allowed, robots-reviewed, terms-reviewed public feeds/APIs; no production source is auto-approved.
 - [x] Submitted reports remain pending until human review.
-- [x] Build RSS/Atom/JSON Feed adapters with HTTPS-only SSRF/DNS-rebinding controls, bounded parsing, conditional requests, backoff and deduplication.\n- [x] Keep imported items private in staging; publication requires human review, source independence and a documented rights review.
+- [x] Build RSS/Atom/JSON Feed adapters with HTTPS-only SSRF/DNS-rebinding controls, bounded parsing, conditional requests, backoff and deduplication.
+- [x] Keep imported items private in staging; publication requires human review, source independence and a documented rights review.
 - [x] Initial agency directory entries are source-linked to official agency-owned pages; contact numbers carry per-entry source links and review dates.
 - [ ] Media rights, malware scanning, metadata removal and moderation are implemented.
 - [ ] Agora stream recording is not enabled; confirm provider-side recording is disabled and retention/deletion controls before launch.
 
 ## Emergency features and launch
-- [x] Initial SOS client flow requests foreground location only after explicit user action, displays GPS/address locally, provides verified call links and lets the user read/share location with the operator; precise coordinates are not persisted or transmitted by NSA.\n- [ ] Responder dispatch, trusted-recipient workflows, location expiry/revocation audit, staffed escalation and physical-device validation remain launch gates.
+- [x] Initial SOS client flow requests foreground location only after explicit user action, displays GPS/address locally, provides verified call links and lets the user read/share location with the operator; precise coordinates are not persisted or transmitted by NSA.
+- [ ] Physical Android/iOS SOS tests are signed off using docs/DEVICE_QA_AND_DISPATCH_READINESS.md.
+- [ ] A real responder integration is contracted, implemented against the partner's documented API, penetration-tested and operationally rehearsed; no dispatch integration is currently active.
+- [ ] Trusted-recipient workflows, explicit location-sharing consent, location expiry/revocation audit and staffed escalation are implemented and tested before dispatch launch.
 - [ ] A staffed response/escalation operation exists before SOS is enabled.
 - [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval/rejection, active-stream moderation, time-limited sessions, abuse report intake and token renewal (code and tests added; CI validation pending). Audience tokens remain disabled unless AGORA_AUDIENCE_TOKEN_ENABLED=true is deliberately configured. Web `agora-rtc-sdk-ng` and native `react-native-agora` publisher/viewer clients are implemented; physical-device builds, Agora account configuration, moderation staffing, low-bandwidth validation and launch safety review remain outstanding.
-- [ ] NDPA 2023/privacy review, DPIA where appropriate, retention and breach plans are complete.
-- [ ] Account deletion request workflow and privacy-rights request/audit endpoints (implementation added; CI validation pending); identity-provider deletion automation, NDPA review and App Store/Play disclosures remain outstanding.
+- [ ] NDPA 2023 legal review and DPIA are signed off by qualified privacy counsel/DPO; lawful bases, controller/processor roles, retention schedule, data-subject notices and breach response plan are approved. Engineering preparation is in docs/PRIVACY_NDPA_REVIEW.md.
+- [x] Account deletion request intake, local access disablement, privacy-rights request/status and append-only audit endpoints are implemented and covered by CI. Identity-provider deletion automation, final deletion verification, NDPA review and App Store/Play disclosures remain outstanding.
 - [ ] Independent security review and incident-response exercise are complete.
 
 ## Working rules

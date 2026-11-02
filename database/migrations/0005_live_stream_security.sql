@@ -2,6 +2,7 @@ BEGIN;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO nsa_migrator;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO nsa_migrator;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO nsa_migrator;
+GRANT USAGE,CREATE ON SCHEMA public TO nsa_migrator;
 ALTER TABLE live_stream_sessions ADD COLUMN IF NOT EXISTS consent_version varchar(32) NOT NULL DEFAULT '2026-11-02-v1';
 DROP INDEX IF EXISTS source_registry_due_idx;
 CREATE INDEX source_registry_due_review_idx ON source_registry(next_poll_at,id) WHERE approval_status='approved' AND robots_allowed IS TRUE AND robots_checked_at IS NOT NULL AND terms_reviewed_at IS NOT NULL;

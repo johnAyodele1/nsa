@@ -22,7 +22,7 @@ async function pinnedAgent(hostname:string):Promise<Agent>{
   if(typeof options==="object"&&options!==null&&"all"in options&&Boolean((options as {all?:boolean}).all))callback(null,addresses);
   else callback(null,selected.address,selected.family);
  };
- const connectOptions={lookup:pinnedLookup} as unknown as NonNullable<ConstructorParameters<typeof Agent>[0]>["connect"];
+ const connectOptions={lookup:pinnedLookup} as unknown as Exclude<NonNullable<ConstructorParameters<typeof Agent>[0]>["connect"],undefined>;
  return new Agent({connect:connectOptions});
 }
 export type FetchResult={status:number;body:string;etag:string|null;lastModified:string|null;contentType:string|null};
@@ -31,7 +31,7 @@ export async function fetchPublicFeed(rawUrl:string,headers:{etag?:string|null;l
  for(let redirects=0;redirects<=3;redirects++){
   const url=await validatePublicHttpsUrl(current);const dispatcher=await pinnedAgent(url.hostname);
   try{
-   const response=await request(url,{method:"GET",headers:{accept:"application/rss+xml, application/atom+xml, application/feed+json, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.7","user-agent":"NSA-Public-Information-Ingestion/1.0 (+source-contact-required)",...(headers.etag?{"if-none-match":headers.etag}:{}),...(headers.lastModified?{"if-modified-since":headers.lastModified}:{})},headersTimeout:10000,bodyTimeout:10000,dispatcher});
+   const response=await request(url,{method:"GET",headers:{accept:"application/rss+xml, application/atom+xml, application/feed+json, application/json;q=0.9, application/xml;q=0.8, text/xml;q=0.7","user-agent":"NSA-FeedReader/1.0",...(headers.etag?{"if-none-match":headers.etag}:{}),...(headers.lastModified?{"if-modified-since":headers.lastModified}:{})},headersTimeout:10000,bodyTimeout:10000,dispatcher});
    if([301,302,303,307,308].includes(response.statusCode)){const location=response.headers.location;if(typeof location!=="string"||redirects===3)throw new Error("FEED_REDIRECT_LIMIT");current=new URL(location,url).toString();continue;}
    if(response.statusCode===304)return {status:304,body:"",etag:typeof response.headers.etag==="string"?response.headers.etag:headers.etag??null,lastModified:typeof response.headers["last-modified"]==="string"?response.headers["last-modified"]:headers.lastModified??null,contentType:null};
    if(response.statusCode!==200)throw new Error("FEED_HTTP_STATUS");

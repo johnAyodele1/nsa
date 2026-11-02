@@ -5,13 +5,11 @@ import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
 import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema} from "@nsa/contracts";
-
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
-type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler};
+type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined};
 const encodeCursor=(payload:{publishedAt:string;id:string})=>Buffer.from(JSON.stringify(payload)).toString("base64url");
 function decodeCursor(value:string){try{const parsed=cursorPayloadSchema.safeParse(JSON.parse(Buffer.from(value,"base64url").toString("utf8")));return parsed.success?parsed.data:null;}catch{return null;}}
 const authNotConfigured:RequestHandler=(_req,res)=>res.status(503).json({error:"AUTH_NOT_CONFIGURED"});
-
 export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
  const app=express();app.disable("x-powered-by");app.disable("etag");app.use(helmet());
  app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.includes(origin))return callback(null,true);return callback(null,false);},methods:["GET","POST"],allowedHeaders:["Content-Type","Authorization"],maxAge:600}));
@@ -19,20 +17,13 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
  app.use("/v1",rateLimit({windowMs:60000,limit:120,standardHeaders:"draft-8",legacyHeaders:false,message:{error:"RATE_LIMITED"}}));
  app.get("/health/live",(_req,res)=>res.status(200).json({status:"ok"}));
  app.get("/health/ready",async(_req,res)=>{if(!pool)return res.status(503).json({status:"not_ready",database:"not_configured"});try{await pool.query("SELECT 1");return res.status(200).json({status:"ready",database:"connected"});}catch{return res.status(503).json({status:"not_ready",database:"unavailable"});}});
-
  app.post("/v1/reports",authMiddleware??authNotConfigured,async(req,res,next)=>{
-  const parsed=reportSubmissionSchema.safeParse(req.body);
-  if(!parsed.success)return res.status(400).json({error:"INVALID_REPORT",details:parsed.error.flatten()});
-  if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
-  const auth=res.locals.auth;
-  if(!auth?.subject)return res.status(401).json({error:"UNAUTHORIZED"});
-  let client:PoolClient|undefined;
-  let transactionOpen=false;
+  const parsed=reportSubmissionSchema.safeParse(req.body);if(!parsed.success)return res.status(400).json({error:"INVALID_REPORT",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  const auth=res.locals.auth;if(!auth?.subject)return res.status(401).json({error:"UNAUTHORIZED"});
+  let client:PoolClient|undefined;let transactionOpen=false;
   try{
-   client=await pool.connect();
-   await client.query("BEGIN");transactionOpen=true;
-   const userResult=await client.query("INSERT INTO app_users(auth_subject) VALUES($1) ON CONFLICT(auth_subject) DO UPDATE SET last_seen_at=now() RETURNING id,is_active",[auth.subject]);
-   const user=userResult.rows[0];
+   client=await pool.connect();await client.query("BEGIN");transactionOpen=true;
+   const userResult=await client.query("INSERT INTO app_users(auth_subject) VALUES($1) ON CONFLICT(auth_subject) DO UPDATE SET last_seen_at=now() RETURNING id,is_active",[auth.subject]);const user=userResult.rows[0];
    if(!user?.is_active){await client.query("ROLLBACK");transactionOpen=false;return res.status(403).json({error:"ACCOUNT_DISABLED"});}
    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)",[auth.subject]);
    const countResult=await client.query("SELECT count(*)::int AS count FROM incident_reports WHERE reporter_id=$1 AND created_at>now()-interval '1 hour'",[user.id]);
@@ -44,7 +35,6 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
   }catch(error){if(transactionOpen&&client){try{await client.query("ROLLBACK");}catch(rollbackError){console.error("Report transaction rollback failed",rollbackError);}}return next(error);}
   finally{client?.release();}
  });
-
  app.get("/v1/incidents",async(req,res,next)=>{
   const parsed=incidentQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   const {state,category,limit,cursor}=parsed.data;const params:(string|number)[]=[];const filters=["status = 'published'","deleted_at IS NULL"];

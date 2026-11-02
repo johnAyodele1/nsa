@@ -5,6 +5,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Foundation
 - [x] Monorepo separates web, mobile, API, shared contracts and database migrations.
 - [x] Web and mobile consume the same API contract.
+- [x] Both clients support Nigeria state/category filters and cursor-based load-more pagination.
 - [x] Express 5 is the only HTTP server framework; Fastify is removed.
 - [x] PostgreSQL is the persistent data store.
 - [x] No fabricated incident records or agency contact details are seeded.

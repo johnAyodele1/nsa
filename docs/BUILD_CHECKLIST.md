@@ -40,7 +40,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [ ] Move browser access tokens behind a BFF HttpOnly cookie session (implementation and tests added; latest CI verification pending): server-side PKCE callback, encrypted database token storage, `__Host-` HttpOnly session cookie in production, CSRF checks and route-allowlisted API proxy; production OIDC/database/key configuration remains deployment work.
 
 ## Automated quality gates
-- [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile; lockfile generation workflow must complete and commit its output.
+- [ ] Verify `pnpm install --frozen-lockfile` succeeds against the committed `pnpm-lock.yaml` on the current branch head.
 - [ ] pnpm typecheck passes on the current branch head after the current changes.
 - [ ] pnpm test passes on the current branch head, including PostgreSQL integration tests.
 - [ ] pnpm build passes on the current branch head, including Android/iOS Expo exports.

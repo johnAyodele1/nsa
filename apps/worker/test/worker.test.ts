@@ -18,7 +18,7 @@ const source={
 };
 const feedBody=`<?xml version="1.0"?><rss version="2.0"><channel><item><guid>story-1</guid><link>https://news.example/story-1</link><title>Verified incident report</title><description>A sufficiently detailed summary for the ingestion staging test.</description><pubDate>Mon, 02 Nov 2026 10:00:00 GMT</pubDate></item></channel></rss>`;
 function makePool(rowCount=1){
- const query=vi.fn(async(sql:string)=>{
+ const query=vi.fn(async(sql:string,_values?:unknown[])=>{
   if(sql.includes("INSERT INTO source_ingestion_items"))return {rows:[],rowCount};
   return {rows:[],rowCount:1};
  });

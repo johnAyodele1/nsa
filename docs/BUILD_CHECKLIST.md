@@ -33,12 +33,12 @@ This checklist is the source of truth for implementation progress. A checkbox is
 
 ## Automated quality gates
 - [ ] pnpm install --frozen-lockfile succeeds from a committed lockfile.
-- [ ] pnpm typecheck passes on the current branch.
-- [ ] pnpm test passes on the current branch.
-- [ ] pnpm build passes on the current branch.
+- [x] pnpm typecheck passes on the current branch.
+- [x] pnpm test passes on the current branch.
+- [x] pnpm build passes on the current branch.
 - [ ] Expo dependency compatibility check passes.
 - [ ] Web and mobile smoke tests pass.
-- [ ] CI is green on the latest PR head.
+- [x] CI is green on the latest PR head (typecheck, tests and builds).
 
 ## Public information and verification
 - [ ] Source registry records publisher, canonical URL, terms, licence, attribution, polling rules and retention.

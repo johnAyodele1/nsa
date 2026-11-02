@@ -79,6 +79,7 @@ The web report form is available at `/report`; the native report form is availab
 
 ## Verified engineering baseline
 - Express 5 with injectable app, Helmet, explicit CORS allowlist, bounded JSON bodies and API rate limiting.
+- Server-generated `x-request-id` correlation headers and structured JSON request/error logs; request logs omit query strings, IP addresses and user identifiers.
 - PostgreSQL pool with connection and statement timeouts.
 - Advisory-locked, transactional, idempotent SQL migration runner.
 - Database constraints enforce Nigerian states, reviewed source approval and safe publication prerequisites.

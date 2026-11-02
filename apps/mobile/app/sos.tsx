@@ -29,14 +29,14 @@ export default function SosScreen(){
   try{
    const permission=await Location.requestForegroundPermissionsAsync();
    if(permission.status!=="granted")throw new Error("Location permission was not granted. You can still call 112 and describe your location.");
-   const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced,mayShowUserSettingsDialog:true});
+   const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.High,mayShowUserSettingsDialog:true});
    let address:string|null=null;let state:NigerianState|null=null;
    try{
     const places=await Location.reverseGeocodeAsync({latitude:position.coords.latitude,longitude:position.coords.longitude});
     const place=places[0];
     if(place){
      address=[place.name,place.street,place.district,place.city,place.region,place.country].filter((part,index,all)=>Boolean(part)&&all.indexOf(part)===index).join(", ");
-     const parsedState=nigerianStateSchema.safeParse(place.region);
+     const region=place.region?.replace(/\\s+State$/i,"").trim();\n     const normalizedRegion=region==="Abuja"||region==="FCT"?"Federal Capital Territory":region;\n     const parsedState=nigerianStateSchema.safeParse(normalizedRegion);
      if(parsedState.success)state=parsedState.data;
     }
    }catch{/* GPS coordinates remain useful when reverse geocoding is unavailable. */}

@@ -54,7 +54,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   const response=await request(app).get("/v1/emergency-contacts?state=Lagos").expect(200);
   const numbers=response.body.data.map((contact:{phoneNumber:string})=>contact.phoneNumber);
   expect(numbers).toHaveLength(2);expect(numbers).toEqual(expect.arrayContaining(["112","767"]));
-  expect(response.body.data.every((contact:{sourceUrl:string;nextReviewAt:string;verifiedAt:string})=>contact.sourceUrl.startsWith("https://")&&new Date(contact.nextReviewAt)>new Date(contact.verifiedAt))).toBe(true);
+  expect(response.body.data.every((contact:{sourceUrl:string;nextReviewAt:string;verifiedAt:string})=>contact.sourceUrl.startsWith("https://")&&new Date(contact.nextReviewAt)>new Date(contact.verifiedAt))).toBe(true);\n  const nationwide=await request(app).get("/v1/emergency-contacts").expect(200);expect(nationwide.body.data.map((contact:{phoneNumber:string})=>contact.phoneNumber)).toEqual(["112"]);\n  const otherState=await request(app).get("/v1/emergency-contacts?state=Oyo").expect(200);expect(otherState.body.data.map((contact:{phoneNumber:string})=>contact.phoneNumber)).toEqual(["112"]);
  });
  it("publishes only reviewed records and paginates correctly when timestamps tie",async()=>{
   const first=await request(app).get("/v1/incidents?limit=1").expect(200);expect(first.body.data).toHaveLength(1);expect(first.body.data[0].title).toBe("Published first incident");expect(first.body.nextCursor).toBeTypeOf("string");

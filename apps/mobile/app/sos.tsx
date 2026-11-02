@@ -36,7 +36,9 @@ export default function SosScreen(){
     const place=places[0];
     if(place){
      address=[place.name,place.street,place.district,place.city,place.region,place.country].filter((part,index,all)=>Boolean(part)&&all.indexOf(part)===index).join(", ");
-     const region=place.region?.replace(/\\s+State$/i,"").trim();\n     const normalizedRegion=region==="Abuja"||region==="FCT"?"Federal Capital Territory":region;\n     const parsedState=nigerianStateSchema.safeParse(normalizedRegion);
+     const region=place.region?.replace(/\s+State$/i,"").trim();
+     const normalizedRegion=region==="Abuja"||region==="FCT"?"Federal Capital Territory":region;
+     const parsedState=nigerianStateSchema.safeParse(normalizedRegion);
      if(parsedState.success)state=parsedState.data;
     }
    }catch{/* GPS coordinates remain useful when reverse geocoding is unavailable. */}
@@ -51,7 +53,8 @@ export default function SosScreen(){
   "Coordinates: "+location.latitude.toFixed(6)+", "+location.longitude.toFixed(6),
   "Map: https://www.google.com/maps?q="+location.latitude+","+location.longitude,
   location.accuracy?"GPS accuracy: approximately "+Math.round(location.accuracy)+" metres":null
- ].filter(Boolean).join("\n"):"";
+ ].filter(Boolean).join("
+"):"";
  async function call(number:string){
   setCallError(null);
   try{await Linking.openURL("tel:"+number);}

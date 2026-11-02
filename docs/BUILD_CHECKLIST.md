@@ -27,8 +27,8 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] API response is checked against the shared Zod schema.
 - [x] PostgreSQL integration tests run against the real migrations.
 - [x] Migrations are applied from an empty PostgreSQL database in CI and verified as idempotent/concurrency-safe.
-- [ ] Add database role separation and explicit least-privilege grants.
-- [ ] Enforce append-only audit records and database-level audit protections.
+- [x] Add separate nsa_app, nsa_worker, nsa_web and nsa_migrator roles with explicit grants; production login membership and secrets remain deployment tasks.
+- [x] Enforce append-only audit records with database triggers and remove UPDATE/DELETE privileges from the API role.
 - [ ] Add request correlation IDs and structured production logging.
 - [x] OIDC authentication verifies HTTPS JWKS signatures, issuer, audience and allowed algorithms.
 - [x] Member report submission is authenticated, private, validated and limited to five per account per hour.
@@ -51,9 +51,9 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.
 - [x] Corroborated reports require two distinct publishers; official confirmation requires an approved official source.
-- [ ] Only approved public feeds/APIs are ingested. (No ingestion is enabled yet.)
+- [x] Worker polls only approved, robots-allowed, terms-reviewed public feeds/APIs.
 - [x] Submitted reports remain pending until human review.
-- [ ] Build approved source ingestion adapters with attribution, deduplication and rate limits.
+- [x] Build RSS/Atom/JSON Feed adapters with HTTPS-only SSRF/DNS-rebinding controls, bounded parsing, conditional requests, backoff and deduplication.\n- [x] Keep imported items private in staging; publication requires human review, source independence and a documented rights review.
 - [x] Initial agency directory entries are source-linked to official agency-owned pages; contact numbers carry per-entry source links and review dates.
 - [ ] Media rights, malware scanning, metadata removal and moderation are implemented.
 

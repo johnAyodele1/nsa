@@ -35,3 +35,27 @@ export type IncidentCategory=z.infer<typeof incidentCategorySchema>;
 export type NigerianState=z.infer<typeof nigerianStateSchema>;
 export type ReportSubmission=z.infer<typeof reportSubmissionSchema>;
 export type ReportModerationDecision=z.infer<typeof reportModerationDecisionSchema>;
+
+export const ingestionModerationDecisionSchema=z.object({
+ decision:z.enum(["publish","reject"]),
+ reason:z.string().trim().min(5).max(1000),
+ sourceIngestionItemIds:z.array(z.string().uuid()).min(1).max(5).optional(),
+ verificationStatus:z.enum(["corroborated","officially_confirmed"]).optional(),
+ category:incidentCategorySchema.optional(),
+ state:nigerianStateSchema.optional(),
+ locality:z.string().trim().max(120).nullable().optional(),
+ occurredAt:z.string().datetime().optional(),
+ rightsReviewNote:z.string().trim().min(20).max(1000).optional()
+}).strict().superRefine((value,ctx)=>{
+ if(value.decision==="publish"){
+  if(!value.sourceIngestionItemIds?.length)ctx.addIssue({code:"custom",message:"Publication requires selected source items"});
+  if(!value.verificationStatus)ctx.addIssue({code:"custom",message:"Publication requires a verification status"});
+  if(!value.category||!value.state||!value.occurredAt)ctx.addIssue({code:"custom",message:"Publication requires a reviewed category, state and incident date"});
+  if(!value.rightsReviewNote)ctx.addIssue({code:"custom",message:"Publication requires a documented rights review"});
+  if(value.verificationStatus==="corroborated"&&(value.sourceIngestionItemIds?.length??0)<2)ctx.addIssue({code:"custom",message:"Corroboration requires at least two source items"});
+ }else if(value.sourceIngestionItemIds||value.verificationStatus||value.category||value.state||value.occurredAt||value.rightsReviewNote){
+  ctx.addIssue({code:"custom",message:"Rejection cannot include publication fields"});
+ }
+ const ids=value.sourceIngestionItemIds??[];if(new Set(ids).size!==ids.length)ctx.addIssue({code:"custom",message:"Source item IDs must be unique"});
+});
+export type IngestionModerationDecision=z.infer<typeof ingestionModerationDecisionSchema>;

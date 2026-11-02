@@ -4,6 +4,7 @@ import helmet from "helmet";
 import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
+import {createIngestionRouter} from "./ingestion.js";
 import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined};
@@ -26,6 +27,7 @@ export function createApp({pool,allowedOrigins,authMiddleware}:Dependencies){
  app.get("/health/live",(_req,res)=>res.status(200).json({status:"ok"}));
  app.get("/health/ready",async(_req,res)=>{if(!pool)return res.status(503).json({status:"not_ready",database:"not_configured"});try{await pool.query("SELECT 1");return res.status(200).json({status:"ready",database:"connected"});}catch{return res.status(503).json({status:"not_ready",database:"unavailable"});}});
  const authenticate=authMiddleware??authNotConfigured;
+ app.use("/v1/moderation/ingestion-items",createIngestionRouter(pool,authenticate,requireModerator(pool)));
  app.post("/v1/reports",authenticate,async(req,res,next)=>{
   const parsed=reportSubmissionSchema.safeParse(req.body);if(!parsed.success)return res.status(400).json({error:"INVALID_REPORT",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   const auth=res.locals.auth;if(!auth?.subject)return res.status(401).json({error:"UNAUTHORIZED"});

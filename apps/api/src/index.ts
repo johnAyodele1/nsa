@@ -16,7 +16,7 @@ const agoraAppId=process.env.AGORA_APP_ID;const agoraAppCertificate=process.env.
 if(Boolean(agoraAppId)!==Boolean(agoraAppCertificate))throw new Error("Configure AGORA_APP_ID and AGORA_APP_CERTIFICATE together");
 const agoraTtl=Number(process.env.AGORA_TOKEN_TTL_SECONDS??900);
 if(agoraAppId&&(!/^[a-f0-9]{32}$/i.test(agoraAppId)||!Number.isInteger(agoraTtl)||agoraTtl<300||agoraTtl>900))throw new Error("Agora App ID must be 32 hex characters and token TTL must be 300-900 seconds");
-const agoraConfig=agoraAppId&&agoraAppCertificate?{appId:agoraAppId,appCertificate:agoraAppCertificate,tokenTtlSeconds:agoraTtl}:null;
+const agoraConfig=agoraAppId&&agoraAppCertificate?{appId:agoraAppId,appCertificate:agoraAppCertificate,tokenTtlSeconds:agoraTtl,coHostAuthEnabled:process.env.AGORA_CO_HOST_AUTH_ENABLED==="true"}:null;
 const app=createApp({pool,authMiddleware,agoraConfig,allowedOrigins:(process.env.CORS_ORIGINS??"http://localhost:3000,http://localhost:8081").split(",").map(x=>x.trim()).filter(Boolean)});
 const server=app.listen(port,process.env.API_HOST??"0.0.0.0",()=>console.info(`NSA API listening on port ${port}`));
 let closing=false;

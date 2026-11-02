@@ -60,7 +60,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 ## Emergency features and launch
 - [ ] SOS is designed with consent, location expiry, revocation, authorized recipients and audit trails.
 - [ ] A staffed response/escalation operation exists before SOS is enabled.
-- [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval, time-limited sessions and abuse report intake (code and tests added; CI validation pending); Agora credentials and client SDK playback/publishing remain disabled until deployment and device testing.
+- [ ] Implement Agora server-side RTC token issuance, broadcaster ownership checks, moderator approval, time-limited sessions and abuse report intake (code and tests added; CI validation pending); subscriber tokens remain disabled until Agora co-host authentication is enabled in the Agora Console and AGORA_CO_HOST_AUTH_ENABLED=true is explicitly configured; web/native SDK playback/publishing, bandwidth controls and device testing remain outstanding.
 - [ ] NDPA 2023/privacy review, DPIA where appropriate, retention and breach plans are complete.
 - [ ] Account deletion request workflow and privacy-rights request/audit endpoints (implementation added; CI validation pending); identity-provider deletion automation, NDPA review and App Store/Play disclosures remain outstanding.
 - [ ] Independent security review and incident-response exercise are complete.

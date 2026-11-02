@@ -82,6 +82,20 @@ The web report form is available at `/report`; the native report form is availab
 - OIDC verification uses HTTPS JWKS and explicit issuer/audience/algorithm checks.
 - CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and workspace builds.
 
+## Agora live-video backend
+
+The Express API has server-side Agora RTC token generation and a moderated live-session lifecycle:
+- Authenticated broadcaster requests require explicit safety acknowledgements and enter a moderator queue.
+- Only approved broadcasters can start a session; sessions expire automatically from the public listing.
+- Short-lived publisher tokens are issued only to the session owner. Subscriber tokens are withheld unless Agora co-host authentication is enabled in the Agora Console and `AGORA_CO_HOST_AUTH_ENABLED=true` is deliberately configured.
+- Viewers can report abuse; moderators can inspect and resolve those reports. The App Certificate remains server-side.
+
+This is a backend foundation, not a finished live-video feature. Web and native Agora SDK clients, device testing, operational moderation, bandwidth controls and retention operations are still required. SOS and responder dispatch are not implemented.
+
+## Privacy API
+
+Authenticated users can submit privacy-rights requests and request local account erasure. Erasure disables local access, writes a tombstone to prevent account recreation and ends/cancels the user's active or pending broadcasts. Identity-provider account deletion remains a manual provider-side operation; a successful local request is not represented as full external deletion.
+
 ## Safety and launch gates
 NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains disabled until Agora credentials, web/mobile SDK clients, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 

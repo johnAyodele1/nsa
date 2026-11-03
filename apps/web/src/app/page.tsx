@@ -13,7 +13,6 @@ export default function HomePage(){
  const [moreError,setMoreError]=useState(false);
  const filterKey=`${state}|${category}|${priority}`;
  const activeFilter=useRef(filterKey);
- activeFilter.current=filterKey;
  useEffect(()=>{
   const controller=new AbortController();activeFilter.current=filterKey;setStatus("loading");setItems([]);setNextCursor(null);setMoreError(false);
   const params=new URLSearchParams({limit:"20"});if(state)params.set("state",state);if(category)params.set("category",category);if(priority)params.set("priority",priority);

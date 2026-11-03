@@ -40,6 +40,15 @@ describe("source ingestion worker",()=>{
   expect(logger.info).toHaveBeenCalledWith("Ingestion source checked",expect.objectContaining({itemsSeen:1,itemsAdded:1}));
  });
 
+ it("excludes unrelated political appointments from the ingestion review queue",async()=>{
+  const unrelated=`<?xml version="1.0"?><rss version="2.0"><channel><item><guid>politics-1</guid><link>https://news.example/story/politics-1</link><title>NDC names Ibezi, Umeh, Nwoye to Anambra campaign council</title><description>The party appointed campaign council members ahead of the 2027 general elections.</description><pubDate>Mon, 02 Nov 2026 10:00:00 GMT</pubDate></item></channel></rss>`;
+  vi.mocked(fetchPublicFeed).mockResolvedValue({status:200,body:unrelated,etag:null,lastModified:null,contentType:"application/rss+xml"});
+  const {pool,query}=makePool(1);
+  await expect(ingestOneSource(pool,source,logger)).resolves.toBe(0);
+  expect(query.mock.calls.some(([sql])=>sql.includes("INSERT INTO source_ingestion_items"))).toBe(false);
+  expect(logger.info).toHaveBeenCalledWith("Ingestion source checked",expect.objectContaining({itemsSeen:1,itemsAdded:0,itemsExcluded:1}));
+ });
+
  it("does not count duplicate source items as new",async()=>{
   vi.mocked(fetchPublicFeed).mockResolvedValue({status:200,body:feedBody,etag:null,lastModified:null,contentType:"application/rss+xml"});
   const {pool}=makePool(0);

@@ -66,4 +66,5 @@ GRANT SELECT,INSERT,DELETE ON auth_sessions TO nsa_app;
 GRANT UPDATE(last_seen_at) ON auth_sessions TO nsa_app;
 GRANT SELECT ON moderator_invites TO nsa_app;
 GRANT SELECT,INSERT,UPDATE ON app_users TO nsa_migrator;
+DELETE FROM web_sessions;
 COMMIT;

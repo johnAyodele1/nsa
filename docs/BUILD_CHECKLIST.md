@@ -9,6 +9,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Both clients support Nigeria state/category filters and cursor-based load-more pagination.
 - [x] Express 5 is the only HTTP server framework; Fastify is removed.
 - [x] PostgreSQL is the persistent data store.
+- [x] API, web session store, worker, migrations and super-admin bootstrap use the same PostgreSQL database; service-specific URLs fall back to the single `DATABASE_URL` and production overrides must retain the same database target.
 - [x] No fabricated incident records or agency contact details are seeded.
 - [x] SOS and live streaming are clearly non-operational until the complete responder workflow exists.
 
@@ -35,6 +36,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Members can read only their own report statuses.
 - [x] Moderator/admin access is checked against database roles.
 - [x] Moderation decisions are transactional and audited.
+- [x] The report console provides one-tap approve-and-publish when a submitted HTTPS evidence URL matches an approved official source; all other approvals retain explicit evidence review.
 - [x] Web email/password registration and sign-in use a BFF HttpOnly session, encrypted server-side token storage and CSRF validation.
 - [x] Native email/password registration and sign-in use iOS Keychain / Android Keystore through SecureStore.
 - [x] Bootstrap the first super admin once from `NSA_SUPER_ADMIN_EMAIL` and `NSA_SUPER_ADMIN_PASSWORD` using the dedicated migration database connection.

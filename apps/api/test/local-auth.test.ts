@@ -1,5 +1,6 @@
 import express from "express";
 import request from "supertest";
+import {createHash} from "node:crypto";
 import {describe,expect,it,vi} from "vitest";
 import {createAuthRouter,createLocalAuthMiddleware} from "../src/local-auth.js";
 
@@ -9,14 +10,15 @@ describe("local email authentication",()=>{
   await request(app).post("/v1/auth/register").send({email:"person@example.com",password:"short"}).expect(400);
   expect(connect).not.toHaveBeenCalled();
  });
- it("hashes passwords and promotes an invited email during registration",async()=>{
+ it("hashes passwords and promotes an invited email only with its one-time code",async()=>{
+  const inviteCode="I".repeat(43);const inviteHash=createHash("sha256").update(inviteCode).digest("hex");
   const client={query:vi.fn(async(sql:string,params?:unknown[])=>{
-   if(sql.includes("SELECT 1 FROM moderator_invites"))return {rows:[{}],rowCount:1};
+   if(sql.includes("SELECT invite_token_hash FROM moderator_invites"))return {rows:[{invite_token_hash:inviteHash}],rowCount:1};
    if(sql.includes("INSERT INTO app_users"))return {rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",auth_subject:"local:subject",email:"mod@example.com",role:"moderator"}],rowCount:1};
    return {rows:[],rowCount:0};
   }),release:vi.fn()};
   const pool={connect:vi.fn().mockResolvedValue(client)} as never;const app=express();app.use(express.json());app.use("/v1/auth",createAuthRouter(pool,createLocalAuthMiddleware(pool)));
-  const response=await request(app).post("/v1/auth/register").send({email:"Mod@Example.com",password:"a-long-unique-password-123"}).expect(201);
+  const response=await request(app).post("/v1/auth/register").send({email:"Mod@Example.com",password:"a-long-unique-password-123",moderatorInviteToken:inviteCode}).expect(201);
   expect(response.body.data.user).toMatchObject({email:"mod@example.com",role:"moderator",authSubject:"local:subject"});
   expect(response.body.data.accessToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
   const insert=client.query.mock.calls.find(call=>call[0].includes("INSERT INTO app_users"));

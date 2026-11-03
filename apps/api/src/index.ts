@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import {fileURLToPath} from "node:url";
-dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 import {Pool} from "pg";
 import {createApp} from "./app.js";
 import {createLocalAuthMiddleware} from "./local-auth.js";
+dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 const port=Number(process.env.API_PORT??4000);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error("API_PORT must be a valid TCP port");
 const apiDatabaseUrl=process.env.API_DATABASE_URL;if(!apiDatabaseUrl)throw new Error("API_DATABASE_URL is required");

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import {Pool} from "pg";
 import {createApp} from "./app.js";
-import {createLocalAuthMiddleware,createAuthRouter} from "./local-auth.js";
+import {createLocalAuthMiddleware} from "./local-auth.js";
 const port=Number(process.env.API_PORT??4000);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error("API_PORT must be a valid TCP port");
 const apiDatabaseUrl=process.env.API_DATABASE_URL;if(!apiDatabaseUrl)throw new Error("API_DATABASE_URL is required");
@@ -13,7 +13,6 @@ const agoraTtl=Number(process.env.AGORA_TOKEN_TTL_SECONDS??900);
 if(agoraAppId&&(!/^[a-f0-9]{32}$/i.test(agoraAppId)||!agoraAppCertificate||!/^[a-f0-9]{32}$/i.test(agoraAppCertificate)||!Number.isInteger(agoraTtl)||agoraTtl<300||agoraTtl>900))throw new Error("Agora App ID must be 32 hex characters and token TTL must be 300-900 seconds");
 const agoraConfig=agoraAppId&&agoraAppCertificate?{appId:agoraAppId,appCertificate:agoraAppCertificate,tokenTtlSeconds:agoraTtl,audienceTokenEnabled:process.env.AGORA_AUDIENCE_TOKEN_ENABLED==="true"}:null;
 const app=createApp({pool,authMiddleware,agoraConfig,allowedOrigins:(process.env.CORS_ORIGINS??"http://localhost:3000,http://localhost:8081").split(",").map(x=>x.trim()).filter(Boolean)});
-app.use("/v1/auth",createAuthRouter(pool,authMiddleware));
 const server=app.listen(port,process.env.API_HOST??"0.0.0.0",()=>console.info(`NSA API listening on port ${port}`));
 let closing=false;
 function shutdown(signal:string){if(closing)return;closing=true;console.info(`Received ${signal}; shutting down`);server.close(async(error)=>{try{await pool?.end();}catch(e){console.error("Database shutdown failed",e);process.exitCode=1;}if(error){console.error(error);process.exitCode=1;}process.exit();});setTimeout(()=>{console.error("Graceful shutdown timed out");process.exit(1);},10000).unref();}

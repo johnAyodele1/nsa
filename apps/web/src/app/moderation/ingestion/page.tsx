@@ -51,8 +51,8 @@ export default function IngestionModerationPage(){
  ));
 
  function chooseLead(item:IngestionQueueItem){
-  setLeadId(item.id);setCategory(item.category);setState(item.detectedState??"");
-  setLocality("");setOccurredAt(item.sourcePublishedAt?item.sourcePublishedAt.slice(0,10):"");
+  setLeadId(item.id);setCategory(item.category);setState("");
+  setLocality("");setOccurredAt("");
   setSelectedIds(current=>current.includes(item.id)?current:[...current,item.id]);
  }
  function toggleEvidence(id:string,checked:boolean){
@@ -88,6 +88,7 @@ export default function IngestionModerationPage(){
   <section className="mod-intro"><span className="eyebrow">SOURCE INGESTION</span><h1>Incident triage</h1><p>Only articles classified as public-safety relevant enter this queue. Priority is an urgency signal, not proof that an incident happened. Check the original source and independent evidence before publication.</p></section>
   {!auth.ready&&<p className="mod-notice">Preparing secure sign-in…</p>}
   {auth.error&&<p className="mod-error" role="alert">{auth.error}</p>}
+  {auth.ready&&!auth.configured&&<section className="mod-login"><h2>Authentication is not configured</h2><p>Configure the OIDC issuer and client ID for the web app and matching API verification settings.</p></section>}
   {auth.ready&&auth.configured&&!auth.authenticated&&<section className="mod-login"><h2>Moderator access</h2><p>Sign in with a moderator or administrator account.</p><button onClick={()=>void auth.signIn()}>Sign in securely</button></section>}
   {auth.authenticated&&<>
    <section className="mod-queue">
@@ -108,12 +109,12 @@ export default function IngestionModerationPage(){
    {lead&&<section className="mod-login">
     <span className="eyebrow">PUBLISHING CHECKLIST</span><h2>Prepare incident</h2>
     <p><b>Lead article:</b> {lead.title}</p>
-    <p>{selectedItems.length} evidence items selected from {distinctPublishers} distinct publishers. The API independently verifies publisher and source requirements.</p>
+    <p>{selectedItems.length} evidence items selected from {distinctPublishers} distinct publishers. Detected state mention: {lead.detectedState??"none"}. Verify the actual incident location and date from the source before entering them below.</p>
     <div className="mod-verification"><label>Verification level<select value={verification} onChange={event=>setVerification(event.target.value as Verification)}><option value="corroborated">Corroborated by independent publishers</option><option value="officially_confirmed">Officially confirmed</option></select></label><span>{verification==="corroborated"?"At least two different publishers are required.":"At least one official source is required."}</span></div>
     <label className="mod-field">Incident category<select value={category} onChange={event=>setCategory(event.target.value as IncidentCategory)}>{incidentCategorySchema.options.filter(value=>value!=="other").map(value=><option key={value} value={value}>{value.replaceAll("_"," ")}</option>)}</select></label>
     <label className="mod-field">State<select value={state} onChange={event=>setState(event.target.value as NigerianState|"")}><option value="">Select confirmed state</option>{nigerianStateSchema.options.map(value=><option key={value} value={value}>{value}</option>)}</select></label>
     <label className="mod-field">Locality (optional)<input value={locality} onChange={event=>setLocality(event.target.value)} maxLength={120} placeholder="Only if confirmed by the source"/></label>
-    <label className="mod-field">Incident date<input type="date" value={occurredAt} onChange={event=>setOccurredAt(event.target.value)}/></label>
+    <label className="mod-field">Incident date (not article publication date)<input type="date" value={occurredAt} onChange={event=>setOccurredAt(event.target.value)}/></label>
     <label className="mod-field">Moderation reason<textarea rows={3} value={reason} onChange={event=>setReason(event.target.value)} placeholder="What evidence supports this decision?"/></label>
     <label className="mod-field">Rights review note<textarea rows={3} value={rightsReviewNote} onChange={event=>setRightsReviewNote(event.target.value)} placeholder="Record the source terms, attribution and permitted use. Do not copy full article text."/></label>
     <div className="mod-decision-buttons"><button className="mod-secondary" onClick={()=>{setLeadId("");setSelectedIds([]);}}>Cancel</button><button className="mod-approve" disabled={saving||!canPublish} onClick={()=>void publish()}>{saving?"Saving…":"Publish reviewed incident"}</button></div>

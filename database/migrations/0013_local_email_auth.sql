@@ -24,7 +24,7 @@ BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION manage_moderator(uuid,varchar,varchar) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION manage_moderator(uuid,varchar,varchar) TO nsa_app;
-GRANT SELECT,INSERT ON auth_sessions TO nsa_app;
+GRANT SELECT,INSERT,DELETE ON auth_sessions TO nsa_app;
 GRANT UPDATE(last_seen_at) ON auth_sessions TO nsa_app;
 GRANT SELECT,DELETE ON moderator_invites TO nsa_app;
 GRANT SELECT ON user_role_audit TO nsa_app;

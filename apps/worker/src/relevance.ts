@@ -24,7 +24,7 @@ const stateNames = [
 
 type Rule = {category: ClassifiedIncidentCategory; priority: IncidentPriority; score: number; patterns: RegExp[]};
 const rules: Rule[] = [
- {category:"kidnapping",priority:"critical",score:98,patterns:[/\bkidnapp(?:ed|ing)?\b/i,/\babduct(?:ed|ion)?\b/i,/\bheld hostage\b/i,/\bransom demand\b/i]},
+ {category:"kidnapping",priority:"critical",score:98,patterns:[/\bkidnap(?:ped|ping)?\b/i,/\babduct(?:ed|ion)?\b/i,/\bheld hostage\b/i,/\bransom demand\b/i]},
  {category:"terrorism",priority:"critical",score:98,patterns:[/\bterroris(?:m|t|ts)\b/i,/\binsurgent(?:s|cy)?\b/i,/\bboko haram\b/i,/\biswap\b/i,/\bsuicide bomber\b/i,/\bterror attack\b/i]},
  {category:"disease_outbreak",priority:"critical",score:97,patterns:[/\bebola\b/i,/\blassa fever\b/i,/\bcholera outbreak\b/i,/\bmpox outbreak\b/i,/\bmeningitis outbreak\b/i,/\bpolio outbreak\b/i]},
  {category:"banditry",priority:"critical",score:96,patterns:[/\bbandit(?:s|ry)?\b/i,/\barmed gang\b/i,/\bcattle rustl(?:er|ing)\b/i]},

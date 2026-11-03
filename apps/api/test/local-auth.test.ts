@@ -22,8 +22,8 @@ describe("local email authentication",()=>{
   const insert=client.query.mock.calls.find(call=>call[0].includes("INSERT INTO app_users"));
   expect(insert?.[1]?.[2]).toMatch(/^scrypt\$16384\$8\$1\$/);
   expect(insert?.[1]?.[2]).not.toBe("a-long-unique-password-123");
-  expect(insert?.[1]?.[3]).toBe("moderator");
-  expect(client.query).toHaveBeenCalledWith("DELETE FROM moderator_invites WHERE email=$1",["mod@example.com"]);
+  expect(insert?.[1]).toHaveLength(3);
+  expect(insert?.[0]).not.toContain(",role");
   expect(client.release).toHaveBeenCalledOnce();
  });
  it("authenticates only active users with a stored opaque session hash",async()=>{

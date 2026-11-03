@@ -18,7 +18,7 @@ ALTER TABLE incidents
 -- disappear from the moderation queue immediately after this migration.
 UPDATE source_ingestion_items
 SET incident_category = CASE
- WHEN (title || ' ' || summary) ~* '\m(kidnapp(ed|ing)?|abduct(ed|ion)?|held hostage|ransom demand)\M' THEN 'kidnapping'::incident_category
+ WHEN (title || ' ' || summary) ~* '\m(kidnap(ped|ping)?|abduct(ed|ion)?|held hostage|ransom demand)\M' THEN 'kidnapping'::incident_category
  WHEN (title || ' ' || summary) ~* '\m(terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack)\M' THEN 'terrorism'::incident_category
  WHEN (title || ' ' || summary) ~* '\m(ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak)\M' THEN 'disease_outbreak'::incident_category
  WHEN (title || ' ' || summary) ~* '\m(bandit(s|ry)?|armed gang|cattle rustl(er|ing))\M' THEN 'banditry'::incident_category
@@ -34,17 +34,17 @@ SET incident_category = CASE
  WHEN (title || ' ' || summary) ~* '\m(missing person|person reported missing|missing child)\M' THEN 'missing_person'::incident_category
  END,
  priority = CASE
- WHEN (title || ' ' || summary) ~* '\m(kidnapp(ed|ing)?|abduct(ed|ion)?|held hostage|ransom demand|terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack|ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak|bandit(s|ry)?|armed gang|cattle rustl(er|ing))\M' THEN 'critical'
+ WHEN (title || ' ' || summary) ~* '\m(kidnap(ped|ping)?|abduct(ed|ion)?|held hostage|ransom demand|terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack|ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak|bandit(s|ry)?|armed gang|cattle rustl(er|ing))\M' THEN 'critical'
  WHEN (title || ' ' || summary) ~* '\m(shoot(ing|out|ings)?|gunmen|shot dead|opened fire|gunfire|robber(y|s)?|building collapse|structure collapse|fire outbreak|market fire|warehouse fire|explosion|blaze|flood(ing|ed)?|flash flood|epidemic|public health emergency|riot(s|ing)?|violent clash(es)?|communal clash(es)?|ethnic clash(es)?)\M' THEN 'high'
  ELSE 'medium'
  END,
  relevance_score = CASE
- WHEN (title || ' ' || summary) ~* '\m(kidnapp(ed|ing)?|abduct(ed|ion)?|held hostage|ransom demand|terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack|ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak|bandit(s|ry)?|armed gang|cattle rustl(er|ing))\M' THEN 96
+ WHEN (title || ' ' || summary) ~* '\m(kidnap(ped|ping)?|abduct(ed|ion)?|held hostage|ransom demand|terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack|ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak|bandit(s|ry)?|armed gang|cattle rustl(er|ing))\M' THEN 96
  WHEN (title || ' ' || summary) ~* '\m(shoot(ing|out|ings)?|gunmen|shot dead|opened fire|gunfire|robber(y|s)?|building collapse|structure collapse|fire outbreak|market fire|warehouse fire|explosion|blaze|flood(ing|ed)?|flash flood|epidemic|public health emergency|riot(s|ing)?|violent clash(es)?|communal clash(es)?|ethnic clash(es)?)\M' THEN 84
  ELSE 68
  END
 WHERE status='pending_review'
- AND (title || ' ' || summary) ~* '\m(kidnapp(ed|ing)?|abduct(ed|ion)?|held hostage|ransom demand|terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack|ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak|bandit(s|ry)?|armed gang|cattle rustl(er|ing)|shoot(ing|out|ings)?|gunmen|shot dead|opened fire|gunfire|robber(y|s)?|building collapse|structure collapse|collapsed building|collapsed structure|fire outbreak|building fire|market fire|warehouse fire|explosion|blaze|flood(ing|ed)?|flash flood|flood alert|disease outbreak|virus outbreak|fever outbreak|epidemic|public health emergency|riot(s|ing)?|violent clash(es)?|communal clash(es)?|ethnic clash(es)?|violent protest(s)?|assault(ed)?|stab(bed|bing)|beaten to death|road accident|vehicle collision|truck crash|bus crash|car crash|crash claims? lives|missing person|person reported missing|missing child)\M';
+ AND (title || ' ' || summary) ~* '\m(kidnap(ped|ping)?|abduct(ed|ion)?|held hostage|ransom demand|terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack|ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak|bandit(s|ry)?|armed gang|cattle rustl(er|ing)|shoot(ing|out|ings)?|gunmen|shot dead|opened fire|gunfire|robber(y|s)?|building collapse|structure collapse|collapsed building|collapsed structure|fire outbreak|building fire|market fire|warehouse fire|explosion|blaze|flood(ing|ed)?|flash flood|flood alert|disease outbreak|virus outbreak|fever outbreak|epidemic|public health emergency|riot(s|ing)?|violent clash(es)?|communal clash(es)?|ethnic clash(es)?|violent protest(s)?|assault(ed)?|stab(bed|bing)|beaten to death|road accident|vehicle collision|truck crash|bus crash|car crash|crash claims? lives|missing person|person reported missing|missing child)\M';
 
 CREATE INDEX IF NOT EXISTS source_ingestion_priority_queue_idx
  ON source_ingestion_items(priority,created_at,id)

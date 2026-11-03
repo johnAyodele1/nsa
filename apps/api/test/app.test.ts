@@ -5,7 +5,7 @@ import {createApp} from "../src/app.js";
 import {createLocalAuthMiddleware} from "../src/local-auth.js";
 const incident={id:"2f4e4b18-22b5-4d14-bbcb-17c48edc05d1",title:"Verified road closure notice",summary:"A road closure notice published by approved sources. Check the primary source for current diversion details.",category:"road_accident",state:"Lagos",locality:"Ikeja",occurred_at:new Date("2026-11-02T08:00:00.000Z"),published_at:new Date("2026-11-02T08:30:00.000Z"),verification_status:"corroborated",priority:"high",source_count:2,public_source_url:"https://example.gov.ng/notices/1"};
 const reportBody={title:"Road obstruction near Ikeja",summary:"A fallen tree is blocking one lane near the junction. Drivers should take care while the report is reviewed.",category:"road_accident",state:"Lagos",locality:"Ikeja",occurredAt:"2026-11-02T08:00:00.000Z"};
-const auth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"oidc|member-123"};next();};
+const auth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"local:member-123"};next();};
 describe("Express API",()=>{
  it("serves liveness without a database",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).get("/health/live").expect(200,{status:"ok"});});
  it("reports database readiness accurately",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).get("/health/ready").expect(503);});
@@ -37,7 +37,7 @@ describe("Express API",()=>{
  });
  it("rejects invalid emergency contact state filters before querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/emergency-contacts?state=Accra").expect(400);expect(query).not.toHaveBeenCalled();});
  it("returns not found for unknown routes",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).get("/missing").expect(404,{error:"NOT_FOUND"});});
- it("fails closed when OIDC authentication is not configured",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).post("/v1/reports").send(reportBody).expect(503,{error:"AUTH_NOT_CONFIGURED"});});
+ it("fails closed when authentication middleware is not configured",async()=>{const app=createApp({pool:null,allowedOrigins:[]});await request(app).post("/v1/reports").send(reportBody).expect(503,{error:"AUTH_NOT_CONFIGURED"});});
  it("requires a valid local bearer session before protected requests",async()=>{const authMiddleware=createLocalAuthMiddleware({query:vi.fn().mockResolvedValue({rows:[]})} as never);const app=createApp({pool:{query:vi.fn()} as never,allowedOrigins:[],authMiddleware});await request(app).post("/v1/reports").send(reportBody).expect(401,{error:"UNAUTHORIZED"});});
  it("rejects malformed local bearer session tokens",async()=>{const authMiddleware=createLocalAuthMiddleware({query:vi.fn()} as never);const app=createApp({pool:{query:vi.fn()} as never,allowedOrigins:[],authMiddleware});await request(app).post("/v1/reports").set("authorization","Bearer not-a-session-token").send(reportBody).expect(401,{error:"UNAUTHORIZED"});});
  it("rejects malformed reports before opening a database transaction",async()=>{const connect=vi.fn();const app=createApp({pool:{connect} as never,allowedOrigins:[],authMiddleware:auth});await request(app).post("/v1/reports").send({...reportBody,state:"Accra"}).expect(400);expect(connect).not.toHaveBeenCalled();});
@@ -46,8 +46,8 @@ describe("Express API",()=>{
   const connect=vi.fn().mockResolvedValue(client);const app=createApp({pool:{connect} as never,allowedOrigins:[],authMiddleware:auth});
   const response=await request(app).post("/v1/reports").send(reportBody).expect(202);
   expect(response.body.data.status).toBe("pending_review");expect(response.body.data.id).toBe("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-  expect(JSON.stringify(response.body)).not.toContain("oidc|member-123");
-  expect(client.query).toHaveBeenCalledWith(expect.stringContaining("pg_advisory_xact_lock"),["oidc|member-123"]);
+  expect(JSON.stringify(response.body)).not.toContain("local:member-123");
+  expect(client.query).toHaveBeenCalledWith(expect.stringContaining("pg_advisory_xact_lock"),["local:member-123"]);
   expect(client.release).toHaveBeenCalledOnce();
  });
  it("limits a member to five reports per hour",async()=>{

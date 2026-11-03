@@ -21,11 +21,10 @@ describe("local email authentication",()=>{
   const response=await request(app).post("/v1/auth/register").send({email:"Mod@Example.com",password:"a-long-unique-password-123",moderatorInviteToken:inviteCode}).expect(201);
   expect(response.body.data.user).toMatchObject({email:"mod@example.com",role:"moderator",authSubject:"local:subject"});
   expect(response.body.data.accessToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
-  const insert=client.query.mock.calls.find(call=>call[0].includes("INSERT INTO app_users"));
-  expect(insert?.[1]?.[2]).toMatch(/^scrypt\$16384\$8\$1\$/);
-  expect(insert?.[1]?.[2]).not.toBe("a-long-unique-password-123");
-  expect(insert?.[1]).toHaveLength(3);
-  expect(insert?.[0]).toContain("INSERT INTO app_users(auth_subject,email,password_hash)");
+  const claim=client.query.mock.calls.find(call=>call[0].includes("claim_moderator_invite"));
+  expect(String(claim?.[1]?.[2]).startsWith("scrypt$16384$8$1$")).toBe(true);
+  expect(claim?.[1]?.[2]).not.toBe("a-long-unique-password-123");
+  expect(claim?.[1]).toHaveLength(4);
   expect(client.release).toHaveBeenCalledOnce();
  });
  it("authenticates only active users with a stored opaque session hash",async()=>{

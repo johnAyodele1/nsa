@@ -11,7 +11,7 @@ Nigeria-focused public-safety information platform. Web, Android and iOS clients
 - `docs/BUILD_CHECKLIST.md`: cross-checked delivery checklist and remaining work.
 
 ## Local development
-Requires Node.js 22.12+, pnpm 10+, Docker.
+Copy `.env.example` to the repository-root `.env`; the API, web and mobile app configs load it for local development. Requires Node.js 22.12+, pnpm 10+, Docker.
 
 ```sh
 corepack enable
@@ -70,7 +70,7 @@ No external identity provider, OIDC issuer, client ID, JWKS endpoint or third-pa
 ## API surface
 - `GET /v1/incidents`: published incidents only; supports Nigeria state/category filters and stable cursor pagination.
 - `GET /v1/agencies`: official contact directory with contact-level source URLs and review dates.
-- `POST /v1/auth/register` and `POST /v1/auth/login`: local email/password account creation and sign-in; both return a short-lived opaque bearer session.
+- `POST /v1/auth/register` and `POST /v1/auth/login`: local email/password account creation and sign-in; both return an expiring opaque bearer session.
 - `GET /v1/auth/me` and `POST /v1/auth/logout`: resolve the current account and revoke its session.
 - `GET /v1/auth/admin/moderators`, `POST /v1/auth/admin/moderators` and `POST /v1/auth/admin/moderators/revoke`: super-admin-only moderator invitation, listing and revocation.
 - `POST /v1/reports`: authenticated report intake. Stores reports privately as pending review; no phone, email or exact coordinates are collected. Maximum five reports per account per hour.

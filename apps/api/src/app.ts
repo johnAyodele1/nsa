@@ -136,7 +136,7 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
  app.get("/v1/incidents",async(req,res,next)=>{
   const parsed=incidentQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   const {state,category,priority,limit,cursor}=parsed.data;const params:(string|number)[]=[];const filters=["status = 'published'","deleted_at IS NULL"];
-  if(state){params.push(state);filters.push(`state = ${params.length}`);}if(category){params.push(category);filters.push(`category = ${params.length}`);}if(priority){params.push(priority);filters.push(`priority = ${params.length}`);}
+  if(state){params.push(state);filters.push(`state = $${params.length}`);}if(category){params.push(category);filters.push(`category = $${params.length}`);}if(priority){params.push(priority);filters.push(`priority = $${params.length}`);}
   if(cursor){const decoded=decodeCursor(cursor);if(!decoded)return res.status(400).json({error:"INVALID_CURSOR"});params.push(decoded.publishedAt,decoded.id);filters.push(`(published_at,id) < ($${params.length-1}::timestamptz,$${params.length}::uuid)`);}
   params.push(limit+1);
   try{const result=await pool.query(`SELECT id,title,summary,category,state,locality,occurred_at,published_at,verification_status,priority,source_count,public_source_url FROM incidents WHERE ${filters.join(" AND ")} ORDER BY published_at DESC,id DESC LIMIT $${params.length}`,params);

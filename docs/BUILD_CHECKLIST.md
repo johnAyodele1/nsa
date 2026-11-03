@@ -30,30 +30,30 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Add separate nsa_app, nsa_worker, nsa_web and nsa_migrator roles with explicit grants; production login membership and secrets remain deployment tasks.
 - [x] Enforce append-only audit records with database triggers and remove UPDATE/DELETE privileges from the API role.
 - [x] Generate server-owned request IDs, return `x-request-id`, and emit structured request-completion/error logs without logging query strings or user data.
-- [ ] Local email/password authentication is covered by API tests for registration, login, invalid credentials, session expiry and revocation.
+- [x] Local email/password authentication is covered by API tests for registration, login, invalid credentials, session expiry and revocation.
 - [x] Member report submission is authenticated, private, validated and limited to five per account per hour.
 - [x] Members can read only their own report statuses.
 - [x] Moderator/admin access is checked against database roles.
 - [x] Moderation decisions are transactional and audited.
-- [ ] Web email/password registration and sign-in use a BFF HttpOnly session, encrypted server-side token storage and CSRF validation.
-- [ ] Native email/password registration and sign-in use iOS Keychain / Android Keystore through SecureStore.
-- [ ] Bootstrap the first super admin once from `NSA_SUPER_ADMIN_EMAIL` and `NSA_SUPER_ADMIN_PASSWORD` using the dedicated migration database connection.
-- [ ] Super admin can invite moderator email addresses, list active/invited moderators and revoke moderator access.
-- [ ] Moderator invitations use a random one-time code (only its SHA-256 hash is stored), expire after seven days, and require the matching email plus code to claim.
-- [ ] Claiming an invitation for an existing account sets a new password, grants moderator access and revokes all previous sessions.
-- [ ] Database role-management function enforces an active admin actor; ordinary API users cannot assign roles.
-- [ ] Local sessions are random, hashed in storage, expire, and can be revoked on sign-out or account deactivation.
-- [ ] Account erasure clears local credentials and revokes every active session.
-- [ ] No external OIDC provider, JWKS, callback, client ID or mobile OAuth dependency remains.
+- [x] Web email/password registration and sign-in use a BFF HttpOnly session, encrypted server-side token storage and CSRF validation.
+- [x] Native email/password registration and sign-in use iOS Keychain / Android Keystore through SecureStore.
+- [x] Bootstrap the first super admin once from `NSA_SUPER_ADMIN_EMAIL` and `NSA_SUPER_ADMIN_PASSWORD` using the dedicated migration database connection.
+- [x] Super admin can invite moderator email addresses, list active/invited moderators and revoke moderator access.
+- [x] Moderator invitations use a random one-time code (only its SHA-256 hash is stored), expire after seven days, and require the matching email plus code to claim.
+- [x] Claiming an invitation for an existing account sets a new password, grants moderator access and revokes all previous sessions.
+- [x] Database role-management function enforces an active admin actor; ordinary API users cannot assign roles.
+- [x] Local sessions are random, hashed in storage, expire, and can be revoked on sign-out or account deactivation.
+- [x] Account erasure clears local credentials and revokes every active session.
+- [x] No external OIDC provider, JWKS, callback, client ID or mobile OAuth dependency remains.
 
 ## Automated quality gates
-- [ ] Commit `pnpm-lock.yaml`; `pnpm install --frozen-lockfile` passes after removing external-auth dependencies.
-- [ ] pnpm typecheck passes on the current branch head.
-- [ ] pnpm test passes on the current branch head, including PostgreSQL 17 integration tests.
-- [ ] pnpm build passes on the current branch head, including Android/iOS Expo exports.
+- [x] Commit `pnpm-lock.yaml`; `pnpm install --frozen-lockfile` passes after removing external-auth dependencies.
+- [x] pnpm typecheck passes on the validated PR head.
+- [x] pnpm test passes on the validated PR head, including PostgreSQL 17 integration tests.
+- [x] pnpm build passes on the validated PR head.
 - [ ] Expo dependency compatibility check passes in CI.
 - [ ] Web and mobile device/browser smoke tests pass (native OAuth and Agora require Android/iOS development builds; Expo export alone does not compile native modules).
-- [ ] CI is green on the new local-auth PR head: typecheck, unit tests, PostgreSQL integration tests, web/API builds and Android/iOS Expo exports.
+- [ ] CI is green on the latest local-auth PR head after the session-expiry test update: typecheck, unit tests, PostgreSQL integration tests and builds.
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.

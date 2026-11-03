@@ -15,10 +15,15 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=pg_catalog,public
 AS $auth$
+DECLARE v_actor_id uuid;
 BEGIN
- IF NEW.email IS NOT NULL AND EXISTS(SELECT 1 FROM public.moderator_invites WHERE email=lower(NEW.email)) THEN
-  NEW.role:='moderator';
-  DELETE FROM public.moderator_invites WHERE email=lower(NEW.email);
+ IF NEW.email IS NOT NULL THEN
+  SELECT created_by INTO v_actor_id FROM public.moderator_invites WHERE email=lower(NEW.email) FOR UPDATE;
+  IF v_actor_id IS NOT NULL THEN
+   NEW.role:='moderator';
+   DELETE FROM public.moderator_invites WHERE email=lower(NEW.email);
+   INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(NEW.id,v_actor_id,'moderator_invited');
+  END IF;
  END IF;
  RETURN NEW;
 END;

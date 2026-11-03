@@ -20,9 +20,9 @@ export function createSourceRegistryRouter(pool:Pool|null,authenticate:RequestHa
   try{
    const result=await pool.query(`SELECT id,publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url,licence_name,attribution_text,is_official,polling_interval_seconds,retention_days,robots_checked_at,robots_allowed,terms_reviewed_at,approval_status,approved_at,created_at
     FROM source_registry
-    WHERE ($1='all' OR approval_status=$1)
+    ${status.data==="all"?"":"WHERE approval_status=$1::source_approval_status"}
     ORDER BY CASE approval_status WHEN 'pending' THEN 0 WHEN 'suspended' THEN 1 WHEN 'rejected' THEN 2 ELSE 3 END,is_official DESC,publisher_name ASC
-    LIMIT 200`,[status.data]);
+    LIMIT 200`,status.data==="all"?[]:[status.data]);
    const data=result.rows.map(row=>({
     id:row.id,publisherName:row.publisher_name,displayName:row.display_name,canonicalUrl:row.canonical_url,feedUrl:row.feed_url,
     sourceKind:row.source_kind,termsUrl:row.terms_url,licenceName:row.licence_name,attributionText:row.attribution_text,

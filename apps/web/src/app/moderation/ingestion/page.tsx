@@ -84,7 +84,7 @@ export default function IngestionModerationPage(){
  }
 
  return <main className="mod-shell">
-  <header className="mod-header"><Link className="brand" href="/"><span className="mark">N</span><span>NSA<small>NIGERIA SECURITY ALERTS</small></span></Link><Link className="mod-back" href="/moderation">Report moderation ↗</Link></header>
+  <header className="mod-header"><Link className="brand" href="/"><span className="mark">N</span><span>NSA<small>NIGERIA SECURITY ALERTS</small></span></Link><Link className="mod-back" href="/moderation">Report moderation ↗</Link><Link className="mod-back" href="/moderation/sources">Manage sources ↗</Link></header>
   <section className="mod-intro"><span className="eyebrow">SOURCE INGESTION</span><h1>Incident triage</h1><p>Only articles classified as public-safety relevant enter this queue. Priority is an urgency signal, not proof that an incident happened. Check the original source and independent evidence before publication.</p></section>
   {!auth.ready&&<p className="mod-notice">Checking your account…</p>}
   {auth.error&&<p className="mod-error" role="alert">{auth.error}</p>}

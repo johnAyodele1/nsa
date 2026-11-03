@@ -17,7 +17,8 @@ ALTER TABLE incidents
 -- Backfill the existing review backlog so unrelated general-news articles
 -- disappear from the moderation queue immediately after this migration.
 UPDATE source_ingestion_items
-SET incident_category = CASE
+SET classification_reason = 'Matched public-safety indicators during legacy backlog classification',
+ incident_category = CASE
  WHEN (title || ' ' || summary) ~* '\m(kidnap(ped|ping)?|abduct(ed|ion)?|held hostage|ransom demand)\M' THEN 'kidnapping'::incident_category
  WHEN (title || ' ' || summary) ~* '\m(terroris(m|t|ts)|insurgent(s|cy)?|boko haram|iswap|suicide bomber|terror attack)\M' THEN 'terrorism'::incident_category
  WHEN (title || ' ' || summary) ~* '\m(ebola|lassa fever|cholera outbreak|mpox outbreak|meningitis outbreak|polio outbreak)\M' THEN 'disease_outbreak'::incident_category

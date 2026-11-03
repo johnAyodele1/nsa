@@ -32,7 +32,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records every migration once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql"]);
  });
  it("serves the official agency directory with source-linked contact details",async()=>{
   const response=await request(app).get("/v1/agencies").expect(200);

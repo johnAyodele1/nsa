@@ -1,4 +1,5 @@
 import {afterAll,beforeAll,describe,expect,it} from "vitest";
+import {createHash} from "node:crypto";
 import type {RequestHandler} from "express";
 import pg from "pg";
 import request from "supertest";
@@ -32,7 +33,26 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records every migration once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql"]);
+ });
+ it("binds moderator role changes to an active super-admin session and consumes email invitations",async()=>{
+  const admin=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash,role) VALUES($1,$2,$3,'admin') RETURNING id",["integration:admin","root@example.test","scrypt-placeholder"]);
+  const adminId=admin.rows[0].id as string;const tokenHash=createHash("sha256").update("admin-session-token").digest("hex");
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,adminId]);
+  await pool.query("SELECT * FROM manage_moderator($1,$2,'invite')",[tokenHash,"new-moderator@example.test"]);
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["new-moderator@example.test"])).rows).toHaveLength(1);
+  const created=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash) VALUES($1,$2,$3) RETURNING id,role",["integration:new-moderator","new-moderator@example.test","scrypt-placeholder"]);
+  expect(created.rows[0].role).toBe("moderator");
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["new-moderator@example.test"])).rows).toHaveLength(0);
+  expect((await pool.query("SELECT action FROM user_role_audit WHERE target_user_id=$1",[created.rows[0].id])).rows.map(row=>row.action)).toEqual(["moderator_invited"]);
+  await pool.query("SELECT * FROM manage_moderator($1,$2,'revoke')",[tokenHash,"new-moderator@example.test"]);
+  expect((await pool.query("SELECT role FROM app_users WHERE id=$1",[created.rows[0].id])).rows[0].role).toBe("member");
+ });
+ it("rejects moderator management without an active admin session",async()=>{
+  const member=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash) VALUES($1,$2,$3) RETURNING id",["integration:member","member@example.test","scrypt-placeholder"]);
+  const tokenHash=createHash("sha256").update("member-session-token").digest("hex");
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,member.rows[0].id]);
+  await expect(pool.query("SELECT * FROM manage_moderator($1,$2,'invite')",[tokenHash,"bad-invite@example.test"])).rejects.toMatchObject({code:"42501"});
  });
  it("serves the official agency directory with source-linked contact details",async()=>{
   const response=await request(app).get("/v1/agencies").expect(200);

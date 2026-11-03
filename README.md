@@ -70,6 +70,9 @@ No external identity provider, OIDC issuer, client ID, JWKS endpoint or third-pa
 ## API surface
 - `GET /v1/incidents`: published incidents only; supports Nigeria state/category filters and stable cursor pagination.
 - `GET /v1/agencies`: official contact directory with contact-level source URLs and review dates.
+- `POST /v1/auth/register` and `POST /v1/auth/login`: local email/password account creation and sign-in; both return a short-lived opaque bearer session.
+- `GET /v1/auth/me` and `POST /v1/auth/logout`: resolve the current account and revoke its session.
+- `GET /v1/auth/admin/moderators`, `POST /v1/auth/admin/moderators` and `POST /v1/auth/admin/moderators/revoke`: super-admin-only moderator invitation, listing and revocation.
 - `POST /v1/reports`: authenticated report intake. Stores reports privately as pending review; no phone, email or exact coordinates are collected. Maximum five reports per account per hour.
 - `GET /v1/reports/mine`: authenticated member's own report status only.
 - `GET /v1/moderation/reports`: moderator/admin-only pending queue; reporter identity is not returned.

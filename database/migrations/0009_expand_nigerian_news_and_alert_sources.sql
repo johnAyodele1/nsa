@@ -241,19 +241,6 @@ VALUES
     90,
     'pending'
   ),
-  (
-    'Nigerian Meteorological Agency',
-    'NiMet — Nigeria Weather Alerts (Hausa CAP feed)',
-    'https://nimet.gov.ng/',
-    'https://cap-sources.s3.amazonaws.com/ng-nimet-ha/rss.xml',
-    'rss',
-    'https://alertingauthority.wmo.int/authorities.php?recId=119',
-    'Attribute the Nigerian Meteorological Agency (NiMet), preserve alert issue/expiry details and link to the original alert. Do not alter warning severity or affected areas.',
-    true,
-    300,
-    90,
-    'pending'
-  )
 ON CONFLICT (feed_url) DO NOTHING;
 
 COMMIT;

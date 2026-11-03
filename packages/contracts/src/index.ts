@@ -42,6 +42,29 @@ export type NigerianState=z.infer<typeof nigerianStateSchema>;
 export type ReportSubmission=z.infer<typeof reportSubmissionSchema>;
 export type ReportModerationDecision=z.infer<typeof reportModerationDecisionSchema>;
 
+export const ingestionQueueItemSchema=z.object({
+ id:z.string().uuid(),
+ title:z.string().min(8).max(180),
+ summary:z.string().min(20).max(600),
+ sourceUrl:z.string().url(),
+ sourcePublishedAt:z.string().datetime().nullable(),
+ createdAt:z.string().datetime(),
+ category:incidentCategorySchema,
+ priority:incidentPrioritySchema,
+ relevanceScore:z.number().int().min(0).max(100),
+ matchedTerms:z.array(z.string().max(80)),
+ detectedState:nigerianStateSchema.nullable(),
+ classificationReason:z.string().max(500),
+ publisherName:z.string().min(1).max(160),
+ displayName:z.string().min(1).max(160),
+ isOfficial:z.boolean(),
+ canonicalUrl:z.string().url(),
+ licenceName:z.string().nullable(),
+ attributionText:z.string().nullable()
+}).strict();
+export const ingestionQueueResponseSchema=z.object({data:z.array(ingestionQueueItemSchema)}).strict();
+export type IngestionQueueItem=z.infer<typeof ingestionQueueItemSchema>;
+
 export const ingestionModerationDecisionSchema=z.object({
  decision:z.enum(["publish","reject"]),
  reason:z.string().trim().min(5).max(1000),

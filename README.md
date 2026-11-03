@@ -109,7 +109,7 @@ Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA wh
 
 ## Nigerian news ingestion sources
 
-Migrations `0008_seed_nigerian_news_sources.sql` and `0009_expand_nigerian_news_and_alert_sources.sql` register 22 RSS/CAP feed candidates across Nigerian publishers and public weather alerts.
+Migrations `0008_seed_nigerian_news_sources.sql`, `0009_expand_nigerian_news_and_alert_sources.sql` and `0010_add_regional_nigerian_news_sources.sql` register 28 RSS/CAP feed candidates across Nigerian publishers and public weather alerts.
 
 Initial Nigerian publisher candidates:
 - Channels Television — `https://www.channelstv.com/feed/`
@@ -134,6 +134,12 @@ Additional publisher and regional coverage candidates:
 - TVC News — `https://www.tvcnews.tv/feed/`
 - Ripples Nigeria — `https://www.ripplesnigeria.com/feed/`
 - ThisDay — `https://www.thisdaylive.com/feed`
+- Leadership — `https://leadership.ng/feed/`
+- Nigerian Bulletin — `https://www.nigerianbulletin.com/forums/-/index.rss`
+- NigerianEye — `https://www.nigerianeye.com/feeds/posts/default`
+- The Tide (Rivers State) — `https://www.thetidenewsonline.com/feed/`
+- Daily News Reporters (Southeast Nigeria) — `https://dailynewsreporters.com/feed/`
+- Converseer — `https://converseer.com/feed/`
 
 Official weather alert candidates:
 - NiMet English CAP/RSS — `https://cap-sources.s3.amazonaws.com/ng-nimet-en/rss.xml`

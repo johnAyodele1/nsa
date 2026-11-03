@@ -52,6 +52,15 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   await request(localAuthApp).post("/v1/auth/login").send({email,password}).expect(200);
   await request(localAuthApp).post("/v1/auth/login").send({email,password:"wrong-password-value"}).expect(401);
  });
+ it("clears local credentials and revokes sessions during account erasure",async()=>{
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email:"erase-local@example.test",password:"account-erasure-password-2026"}).expect(201);
+  const token=registered.body.data.accessToken as string;const subject=registered.body.data.user.authSubject as string;
+  await pool.query("SELECT request_account_erasure($1,$2)",[subject,createHash("sha256").update(subject).digest("hex")]);
+  const user=await pool.query("SELECT is_active,email,password_hash,role FROM app_users WHERE auth_subject LIKE 'erased:%' AND id=$1",[registered.body.data.user.id]);
+  expect(user.rows[0]).toMatchObject({is_active:false,email:null,password_hash:null,role:"member"});
+  expect((await pool.query("SELECT id FROM auth_sessions WHERE user_id=$1",[registered.body.data.user.id])).rows).toHaveLength(0);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+token).expect(401);
+ });
  it("requires the one-time invite code to claim an existing email as moderator",async()=>{
   const email="new-moderator@example.test";
   const existing=await request(localAuthApp).post("/v1/auth/register").send({email,password:"old-member-password-2026"}).expect(201);

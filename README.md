@@ -109,12 +109,38 @@ Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA wh
 
 ## Nigerian news ingestion sources
 
-Migration `0008_seed_nigerian_news_sources.sql` seeds four publisher RSS candidates:
+Migrations `0008_seed_nigerian_news_sources.sql` and `0009_expand_nigerian_news_and_alert_sources.sql` register 21 RSS/CAP feed candidates across Nigerian publishers and public weather alerts.
+
+Initial Nigerian publisher candidates:
 - Channels Television — `https://www.channelstv.com/feed/`
 - Premium Times — `https://www.premiumtimesng.com/feed`
 - The Punch — `https://rss.punchng.com/v1/category/latest_news`
 - Vanguard — `https://www.vanguardngr.com/feed/`
 
-They are inserted with `approval_status='pending'`. This is deliberate: applying the migration registers the feeds but does not start collecting from them. An authorized operator must first verify the current feed endpoint, publisher terms, robots policy and attribution requirements, then approve each source. The worker only claims approved sources whose robots and terms checks are recorded.
+Additional publisher and regional coverage candidates:
+- BBC News Africa — `https://feeds.bbci.co.uk/news/world/africa/rss.xml` (regional Africa coverage, not Nigeria-only)
+- Daily Trust — `https://dailytrust.com/feed/`
+- Daily Post Nigeria — `https://dailypost.ng/feed`
+- The Guardian Nigeria — `https://guardian.ng/feed/`
+- TheCable — `https://www.thecable.ng/feed`
+- The Nation — `https://thenationonlineng.net/feed/`
+- Legit.ng — `https://www.legit.ng/rss/all.rss`
+- Information Nigeria — `https://www.informationng.com/feed`
+- Tribune Online — `https://tribuneonlineng.com/feed/`
+- Sahara Reporters — `https://saharareporters.com/feeds/latest/feed`
+- P.M. News — `https://pmnewsnigeria.com/feed/`
+- BusinessDay — `https://businessday.ng/feed/`
+- Arise News — `https://www.arise.tv/feed/`
+- TVC News — `https://www.tvcnews.tv/feed/`
+- Ripples Nigeria — `https://www.ripplesnigeria.com/feed/`
+- ThisDay — `https://www.thisdaylive.com/feed`
 
-The seed does not claim that official agency websites expose RSS feeds. Nigeria Police Force, Defence Headquarters, NEMA, NiMet and state emergency-management agencies need individually verified feeds or dedicated, terms-compliant website/API adapters before they can be ingested. Do not put ordinary HTML page URLs into the RSS/Atom/JSON Feed adapter or mark them approved just to make the worker collect them. Social network monitoring also requires separate platform-specific integrations and applicable API permissions.
+Official weather alert candidates:
+- NiMet English CAP/RSS — `https://cap-sources.s3.amazonaws.com/ng-nimet-en/rss.xml`
+- NiMet Hausa CAP/RSS — `https://cap-sources.s3.amazonaws.com/ng-nimet-ha/rss.xml`
+
+The NiMet CAP endpoints are listed in the World Meteorological Organization's Register of Alerting Authorities for Nigeria. BBC Africa and the publisher feed candidates are drawn from publisher feed listings and independent feed directories; those directories are discovery evidence, not a substitute for publisher permission or a terms review.
+
+**All entries are inserted as `approval_status='pending'`.** This is deliberate. Registering a URL does not mean the worker is collecting from it. Before approval, an authorized operator must verify the endpoint's current response and parser compatibility, publisher terms, robots policy, attribution, retention and rate limits. The worker only claims approved sources whose robots and terms checks are recorded.
+
+Nigeria Police Force, Defence Headquarters, NEMA and state emergency-management agencies still need individually verified feed/API endpoints or dedicated, terms-compliant website adapters. Do not put ordinary HTML page URLs into the RSS/Atom/JSON Feed adapter. Social network monitoring requires separate platform-specific integrations and applicable API permissions. The RSS seed does not implement those integrations or automatically publish source items.

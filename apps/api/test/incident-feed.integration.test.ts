@@ -58,7 +58,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   await pool.query("SELECT request_account_erasure($1,$2)",[subject,createHash("sha256").update(subject).digest("hex")]);
   const user=await pool.query("SELECT is_active,email,password_hash,role FROM app_users WHERE auth_subject LIKE 'erased:%' AND id=$1",[registered.body.data.user.id]);
   expect(user.rows[0]).toMatchObject({is_active:false,email:null,password_hash:null,role:"member"});
-  expect((await pool.query("SELECT id FROM auth_sessions WHERE user_id=$1",[registered.body.data.user.id])).rows).toHaveLength(0);
+  expect((await pool.query("SELECT session_id_hash FROM auth_sessions WHERE user_id=$1",[registered.body.data.user.id])).rows).toHaveLength(0);
   await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+token).expect(401);
  });
  it("requires the one-time invite code to claim an existing email as moderator",async()=>{

@@ -109,7 +109,7 @@ Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA wh
 
 ## Nigerian news ingestion sources
 
-Migrations `0008_seed_nigerian_news_sources.sql` and `0009_expand_nigerian_news_and_alert_sources.sql` register 21 RSS/CAP feed candidates across Nigerian publishers and public weather alerts.
+Migrations `0008_seed_nigerian_news_sources.sql` and `0009_expand_nigerian_news_and_alert_sources.sql` register 22 RSS/CAP feed candidates across Nigerian publishers and public weather alerts.
 
 Initial Nigerian publisher candidates:
 - Channels Television — `https://www.channelstv.com/feed/`

@@ -31,7 +31,7 @@ $auth$;
 REVOKE ALL ON FUNCTION manage_moderator(char,varchar,varchar,char) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION manage_moderator(char,varchar,varchar,char) TO nsa_app;
 CREATE OR REPLACE FUNCTION claim_moderator_invite(p_email varchar,p_invite_token_hash char(64),p_password_hash varchar,p_auth_subject varchar)
-RETURNS TABLE(user_id uuid,auth_subject varchar,email varchar,role app_role)
+RETURNS TABLE(id uuid,auth_subject varchar,email varchar,role app_role)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $auth$
 DECLARE v_email varchar(254):=lower(btrim(p_email)); v_actor_id uuid; v_user_id uuid; v_auth_subject varchar(255); v_role app_role; v_active boolean;
 BEGIN

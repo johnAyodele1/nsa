@@ -22,10 +22,9 @@ export default function ModerationPage(){
  function quickApprovalSource(report:ModerationQueueItem){if(!report.sourceUrl)return null;try{const article=new URL(report.sourceUrl);if(article.protocol!=="https:"||article.pathname==="/"||article.pathname.length<2)return null;return sources.find(source=>source.isOfficial&&new URL(source.canonicalUrl).origin===article.origin)??null;}catch{return null;}}
  async function approveAndPublishInOneTap(report:ModerationQueueItem){
   const source=quickApprovalSource(report);if(!source||!report.sourceUrl||savingReportId)return;
-  setSavingReportId(report.id);
   const payload={decision:"approve" as const,reason:"Reviewed by moderator and matched to the approved official source.",verificationStatus:"officially_confirmed" as const,sources:[{sourceRegistryId:source.id,sourceUrl:report.sourceUrl}]};
   const parsed=reportModerationDecisionSchema.safeParse(payload);if(!parsed.success){setError(parsed.error.issues[0]?.message??"The report cannot be approved yet.");return;}
-  setError("");setNotice("");
+  setSavingReportId(report.id);setError("");setNotice("");
   try{const response=await apiFetch("v1/moderation/reports/"+report.id+"/decision",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(parsed.data)});const result=await response.json() as {error?:string};if(!response.ok)throw new Error(result.error??"Approval and publication failed.");setReports(current=>current.filter(item=>item.id!==report.id));setDecisions(current=>{const next={...current};delete next[report.id];return next;});setNotice("Incident approved and published.");}
   catch(e){setError(e instanceof Error?e.message:"Approval and publication failed.");}
   finally{setSavingReportId(null);}

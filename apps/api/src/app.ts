@@ -5,6 +5,7 @@ import {rateLimit} from "express-rate-limit";
 import type {Pool,PoolClient} from "pg";
 import {z} from "zod";
 import {createIngestionRouter} from "./ingestion.js";
+import {createSourceRegistryRouter} from "./source-registry.js";
 import {createLiveRouter,type AgoraConfig} from "./live.js";
 import {createPrivacyRouter} from "./privacy.js";
 import {createHash,randomUUID} from "node:crypto";
@@ -43,6 +44,7 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
  const authenticate=authMiddleware??authNotConfigured;
  app.use("/v1/auth",createAuthRouter(pool!,authenticate));
  app.use("/v1/moderation/ingestion-items",createIngestionRouter(pool,authenticate,requireModerator(pool)));
+ app.use("/v1/moderation/source-registry",createSourceRegistryRouter(pool,authenticate,requireModerator(pool)));
  app.use("/v1/live-sessions",createLiveRouter(pool,authenticate,requireModerator(pool),agoraConfig??null));
  app.use("/v1",createPrivacyRouter(pool,authenticate,requireModerator(pool)));
  app.post("/v1/reports",authenticate,async(req,res,next)=>{

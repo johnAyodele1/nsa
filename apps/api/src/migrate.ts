@@ -15,7 +15,7 @@ export async function applyMigrations(pool:Pool,directory=migrationsDirectory):P
   await client.query("CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY,applied_at timestamptz NOT NULL DEFAULT now())");
   const files=(await readdir(directory)).filter(file=>/^\d+.*\.sql$/.test(file)).sort();
   if(files.length===0)throw new Error(`No SQL migrations found in ${directory}`);
-  const schemaOwnerMigrations=new Set(["0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql"]);
+  const schemaOwnerMigrations=new Set(["0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql","0018_source_registry_moderation.sql"]);
   for(const file of files){
    if(file>='0006_privacy_erasure.sql'&&!migratorRoleActive){await client.query('SET ROLE nsa_migrator');migratorRoleActive=true;}
    const existing=await client.query("SELECT 1 FROM schema_migrations WHERE version=$1",[file]);

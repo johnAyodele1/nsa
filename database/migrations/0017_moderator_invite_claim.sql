@@ -41,7 +41,7 @@ BEGIN
  SELECT app_users.id,app_users.auth_subject,app_users.role,app_users.is_active INTO v_user_id,v_auth_subject,v_role,v_active FROM public.app_users WHERE lower(app_users.email)=v_email FOR UPDATE;
  IF v_user_id IS NOT NULL THEN
   IF v_active IS NOT TRUE OR v_role='admin' THEN RAISE EXCEPTION 'This account cannot claim moderator access' USING ERRCODE='42501'; END IF;
-  UPDATE public.app_users SET password_hash=p_password_hash,role='moderator',updated_at=now() WHERE id=v_user_id;
+  UPDATE public.app_users SET password_hash=p_password_hash,role='moderator',updated_at=now() WHERE public.app_users.id=v_user_id;
   DELETE FROM public.auth_sessions WHERE auth_sessions.user_id=v_user_id;
   INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_user_id,v_actor_id,'moderator_invited');
  ELSE

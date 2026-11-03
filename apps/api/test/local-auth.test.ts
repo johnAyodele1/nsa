@@ -23,12 +23,13 @@ describe("local email authentication",()=>{
   expect(insert?.[1]?.[2]).toMatch(/^scrypt\$16384\$8\$1\$/);
   expect(insert?.[1]?.[2]).not.toBe("a-long-unique-password-123");
   expect(insert?.[1]).toHaveLength(3);
-  expect(insert?.[0]).not.toContain(",role");
+  expect(insert?.[0]).toContain("INSERT INTO app_users(auth_subject,email,password_hash)");
   expect(client.release).toHaveBeenCalledOnce();
  });
  it("authenticates only active users with a stored opaque session hash",async()=>{
   const token="A".repeat(43);const query=vi.fn()
    .mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",auth_subject:"local:subject",role:"member",is_active:true}],rowCount:1})
+   .mockResolvedValueOnce({rows:[],rowCount:0})
    .mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",auth_subject:"local:subject",email:"person@example.com",role:"member"}],rowCount:1})
    .mockResolvedValue({rows:[],rowCount:0});
   const pool={query} as never;const app=express();app.use(express.json());app.use("/v1/auth",createAuthRouter(pool,createLocalAuthMiddleware(pool)));

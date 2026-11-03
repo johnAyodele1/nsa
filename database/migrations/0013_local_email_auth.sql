@@ -45,7 +45,7 @@ BEGIN
  IF p_action='invite' THEN
   IF v_target_role='admin' THEN RAISE EXCEPTION 'Super-admin accounts cannot be changed to moderators' USING ERRCODE='42501'; END IF;
   IF v_target_id IS NULL THEN
-   INSERT INTO public.moderator_invites(email,created_by) VALUES(v_email,v_actor_id) ON CONFLICT(email) DO UPDATE SET created_by=EXCLUDED.created_by,created_at=now();
+   INSERT INTO public.moderator_invites(email,created_by) VALUES(v_email,v_actor_id) ON CONFLICT ON CONSTRAINT moderator_invites_pkey DO UPDATE SET created_by=EXCLUDED.created_by,created_at=now();
   ELSE
    UPDATE public.app_users SET role='moderator',updated_at=now() WHERE id=v_target_id AND role<>'moderator';
    DELETE FROM public.moderator_invites WHERE moderator_invites.email=v_email;

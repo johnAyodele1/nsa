@@ -105,3 +105,48 @@ Authenticated users can submit privacy-rights requests and request local account
 NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains unavailable until Agora credentials, audience-token enablement, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 
 Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is not a launch-ready emergency-response system.
+
+
+## Nigerian news ingestion sources
+
+Migrations `0008_seed_nigerian_news_sources.sql`, `0009_expand_nigerian_news_and_alert_sources.sql` and `0010_add_regional_nigerian_news_sources.sql` register 28 RSS/CAP feed candidates across Nigerian publishers and public weather alerts.
+
+Initial Nigerian publisher candidates:
+- Channels Television — `https://www.channelstv.com/feed/`
+- Premium Times — `https://www.premiumtimesng.com/feed`
+- The Punch — `https://rss.punchng.com/v1/category/latest_news`
+- Vanguard — `https://www.vanguardngr.com/feed/`
+
+Additional publisher and regional coverage candidates:
+- BBC News Africa — `https://feeds.bbci.co.uk/news/world/africa/rss.xml` (regional Africa coverage, not Nigeria-only)
+- Daily Trust — `https://dailytrust.com/feed/`
+- Daily Post Nigeria — `https://dailypost.ng/feed`
+- The Guardian Nigeria — `https://guardian.ng/feed/`
+- TheCable — `https://www.thecable.ng/feed`
+- The Nation — `https://thenationonlineng.net/feed/`
+- Legit.ng — `https://www.legit.ng/rss/all.rss`
+- Information Nigeria — `https://www.informationng.com/feed`
+- Tribune Online — `https://tribuneonlineng.com/feed/`
+- Sahara Reporters — `https://saharareporters.com/feeds/latest/feed`
+- P.M. News — `https://pmnewsnigeria.com/feed/`
+- BusinessDay — `https://businessday.ng/feed/`
+- Arise News — `https://www.arise.tv/feed/`
+- TVC News — `https://www.tvcnews.tv/feed/`
+- Ripples Nigeria — `https://www.ripplesnigeria.com/feed/`
+- ThisDay — `https://www.thisdaylive.com/feed`
+- Leadership — `https://leadership.ng/feed/`
+- Nigerian Bulletin — `https://www.nigerianbulletin.com/forums/-/index.rss`
+- NigerianEye — `https://www.nigerianeye.com/feeds/posts/default`
+- The Tide (Rivers State) — `https://www.thetidenewsonline.com/feed/`
+- Daily News Reporters (Southeast Nigeria) — `https://dailynewsreporters.com/feed/`
+- Converseer — `https://converseer.com/feed/`
+
+Official weather alert candidates:
+- NiMet English CAP/RSS — `https://cap-sources.s3.amazonaws.com/ng-nimet-en/rss.xml`
+- NiMet Hausa CAP/RSS — `https://cap-sources.s3.amazonaws.com/ng-nimet-ha/rss.xml`
+
+The NiMet CAP endpoints are listed in the World Meteorological Organization's Register of Alerting Authorities for Nigeria. BBC Africa and the publisher feed candidates are drawn from publisher feed listings and independent feed directories; those directories are discovery evidence, not a substitute for publisher permission or a terms review.
+
+**All entries are inserted as `approval_status='pending'`.** This is deliberate. Registering a URL does not mean the worker is collecting from it. Before approval, an authorized operator must verify the endpoint's current response and parser compatibility, publisher terms, robots policy, attribution, retention and rate limits. The worker only claims approved sources whose robots and terms checks are recorded.
+
+Nigeria Police Force, Defence Headquarters, NEMA and state emergency-management agencies still need individually verified feed/API endpoints or dedicated, terms-compliant website adapters. Do not put ordinary HTML page URLs into the RSS/Atom/JSON Feed adapter. Social network monitoring requires separate platform-specific integrations and applicable API permissions. The RSS seed does not implement those integrations or automatically publish source items.

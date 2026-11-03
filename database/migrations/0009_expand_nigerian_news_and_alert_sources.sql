@@ -1,0 +1,246 @@
+-- Expand the Nigerian news and public-warning source catalogue.
+-- All entries remain pending until an operator verifies endpoint behaviour,
+-- robots policy, terms, attribution and retention requirements.
+-- BBC Africa is regional coverage, not a Nigeria-only feed. NiMet's CAP feeds
+-- are official weather-alert feeds published in the WMO alerting-authority
+-- register; they still require operational/terms review before approval.
+BEGIN;
+
+INSERT INTO source_registry (
+  publisher_name,
+  display_name,
+  canonical_url,
+  feed_url,
+  source_kind,
+  terms_url,
+  attribution_text,
+  is_official,
+  polling_interval_seconds,
+  retention_days,
+  approval_status
+)
+VALUES
+  (
+    'BBC News',
+    'BBC News — Africa (regional coverage)',
+    'https://www.bbc.com/news',
+    'https://feeds.bbci.co.uk/news/world/africa/rss.xml',
+    'rss',
+    'https://www.bbc.com/usingthebbc/terms',
+    'Attribute BBC News and link to the original BBC article. Preserve BBC branding and feed attribution; do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'Daily Trust',
+    'Daily Trust — Latest News',
+    'https://dailytrust.com/',
+    'https://dailytrust.com/feed/',
+    'rss',
+    'https://dailytrust.com/',
+    'Attribute Daily Trust and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'Daily Post Nigeria',
+    'Daily Post Nigeria — Latest News',
+    'https://dailypost.ng/',
+    'https://dailypost.ng/feed',
+    'rss',
+    'https://dailypost.ng/',
+    'Attribute Daily Post Nigeria and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'The Guardian Nigeria',
+    'The Guardian Nigeria — Latest News',
+    'https://guardian.ng/',
+    'https://guardian.ng/feed/',
+    'rss',
+    'https://guardian.ng/',
+    'Attribute The Guardian Nigeria and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'TheCable',
+    'TheCable — Latest News',
+    'https://www.thecable.ng/',
+    'https://www.thecable.ng/feed',
+    'rss',
+    'https://www.thecable.ng/',
+    'Attribute TheCable and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'The Nation',
+    'The Nation — Latest News',
+    'https://thenationonlineng.net/',
+    'https://thenationonlineng.net/feed/',
+    'rss',
+    'https://thenationonlineng.net/',
+    'Attribute The Nation and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'Legit.ng',
+    'Legit.ng — All News',
+    'https://www.legit.ng/',
+    'https://www.legit.ng/rss/all.rss',
+    'rss',
+    'https://www.legit.ng/',
+    'Attribute Legit.ng and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'Information Nigeria',
+    'Information Nigeria — Latest News',
+    'https://www.informationng.com/',
+    'https://www.informationng.com/feed',
+    'rss',
+    'https://www.informationng.com/',
+    'Attribute Information Nigeria and link to the original article. Do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'Tribune Online',
+    'Tribune Online — Latest News',
+    'https://tribuneonlineng.com/',
+    'https://tribuneonlineng.com/feed/',
+    'rss',
+    'https://tribuneonlineng.com/',
+    'Attribute Tribune Online and link to the original article. Do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'Sahara Reporters',
+    'Sahara Reporters — Latest News',
+    'https://saharareporters.com/',
+    'https://saharareporters.com/feeds/latest/feed',
+    'rss',
+    'https://saharareporters.com/',
+    'Attribute Sahara Reporters and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'P.M. News',
+    'P.M. News — Latest News',
+    'https://pmnewsnigeria.com/',
+    'https://pmnewsnigeria.com/feed/',
+    'rss',
+    'https://pmnewsnigeria.com/',
+    'Attribute P.M. News and link to the original article. Do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'BusinessDay',
+    'BusinessDay Nigeria — Latest News',
+    'https://businessday.ng/',
+    'https://businessday.ng/feed/',
+    'rss',
+    'https://businessday.ng/',
+    'Attribute BusinessDay and link to the original article. Do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'Arise News',
+    'Arise News — Latest News',
+    'https://www.arise.tv/',
+    'https://www.arise.tv/feed/',
+    'rss',
+    'https://www.arise.tv/',
+    'Attribute Arise News and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'TVC News',
+    'TVC News — Latest News',
+    'https://www.tvcnews.tv/',
+    'https://www.tvcnews.tv/feed/',
+    'rss',
+    'https://www.tvcnews.tv/',
+    'Attribute TVC News and link to the original article. Do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'Ripples Nigeria',
+    'Ripples Nigeria — Latest News',
+    'https://www.ripplesnigeria.com/',
+    'https://www.ripplesnigeria.com/feed/',
+    'rss',
+    'https://www.ripplesnigeria.com/',
+    'Attribute Ripples Nigeria and link to the original article. Do not republish full article text.',
+    false,
+    1800,
+    90,
+    'pending'
+  ),
+  (
+    'ThisDay',
+    'ThisDay — Latest News',
+    'https://www.thisdaylive.com/',
+    'https://www.thisdaylive.com/feed',
+    'rss',
+    'https://www.thisdaylive.com/',
+    'Attribute ThisDay and link to the original article. Do not republish full article text.',
+    false,
+    900,
+    90,
+    'pending'
+  ),
+  (
+    'Nigerian Meteorological Agency',
+    'NiMet — Nigeria Weather Alerts (English CAP feed)',
+    'https://nimet.gov.ng/',
+    'https://cap-sources.s3.amazonaws.com/ng-nimet-en/rss.xml',
+    'rss',
+    'https://alertingauthority.wmo.int/authorities.php?recId=119',
+    'Attribute the Nigerian Meteorological Agency (NiMet), preserve alert issue/expiry details and link to the original alert. Do not alter warning severity or affected areas.',
+    true,
+    300,
+    90,
+    'pending'
+  )
+ON CONFLICT (feed_url) DO NOTHING;
+
+COMMIT;

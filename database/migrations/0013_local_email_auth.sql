@@ -31,18 +31,27 @@ REVOKE INSERT ON app_users FROM nsa_app;
 GRANT INSERT(auth_subject,email,password_hash) ON app_users TO nsa_app;
 
 CREATE OR REPLACE FUNCTION manage_moderator(p_session_hash char(64),p_email varchar,p_action varchar) RETURNS TABLE(email varchar,action varchar) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $auth$
-DECLARE v_email varchar(254):=lower(btrim(p_email)); v_target_id uuid; v_actor_id uuid;
+DECLARE v_email varchar(254):=lower(btrim(p_email)); v_target_id uuid; v_actor_id uuid; v_target_role app_role;
 BEGIN
  SELECT u.id INTO v_actor_id FROM public.auth_sessions s JOIN public.app_users u ON u.id=s.user_id WHERE s.session_id_hash=p_session_hash AND s.expires_at>now() AND u.role='admin' AND u.is_active IS TRUE;
  IF v_actor_id IS NULL THEN RAISE EXCEPTION 'Active administrator session required' USING ERRCODE='42501'; END IF;
  IF v_email IS NULL OR length(v_email)>254 OR position('@' in v_email)<2 OR position('.' in split_part(v_email,'@',2))<2 THEN RAISE EXCEPTION 'Valid email address required' USING ERRCODE='22023'; END IF;
- SELECT id INTO v_target_id FROM public.app_users WHERE lower(app_users.email)=v_email;
+ SELECT id,role INTO v_target_id,v_target_role FROM public.app_users WHERE lower(app_users.email)=v_email;
  IF p_action='invite' THEN
-  INSERT INTO public.moderator_invites(email,created_by) VALUES(v_email,v_actor_id) ON CONFLICT(email) DO UPDATE SET created_by=EXCLUDED.created_by,created_at=now();
-  IF v_target_id IS NOT NULL THEN UPDATE public.app_users SET role='moderator',updated_at=now() WHERE id=v_target_id AND role<>'admin'; INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_target_id,v_actor_id,'moderator_invited'); END IF;
+  IF v_target_role='admin' THEN RAISE EXCEPTION 'Super-admin accounts cannot be changed to moderators' USING ERRCODE='42501'; END IF;
+  IF v_target_id IS NULL THEN
+   INSERT INTO public.moderator_invites(email,created_by) VALUES(v_email,v_actor_id) ON CONFLICT(email) DO UPDATE SET created_by=EXCLUDED.created_by,created_at=now();
+  ELSE
+   UPDATE public.app_users SET role='moderator',updated_at=now() WHERE id=v_target_id AND role<>'moderator';
+   DELETE FROM public.moderator_invites WHERE moderator_invites.email=v_email;
+   INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_target_id,v_actor_id,'moderator_invited');
+  END IF;
  ELSIF p_action='revoke' THEN
   DELETE FROM public.moderator_invites WHERE moderator_invites.email=v_email;
-  IF v_target_id IS NOT NULL THEN UPDATE public.app_users SET role='member',updated_at=now() WHERE id=v_target_id AND role='moderator'; INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_target_id,v_actor_id,'moderator_revoked'); END IF;
+  IF v_target_id IS NOT NULL AND v_target_role='moderator' THEN
+   UPDATE public.app_users SET role='member',updated_at=now() WHERE id=v_target_id;
+   INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_target_id,v_actor_id,'moderator_revoked');
+  END IF;
  ELSE RAISE EXCEPTION 'Unsupported moderator action' USING ERRCODE='22023'; END IF;
  RETURN QUERY SELECT v_email,p_action;
 END; $auth$;

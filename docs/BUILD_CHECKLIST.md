@@ -55,7 +55,7 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] pnpm build passes on the validated PR head, including Android and iOS Expo exports.
 - [x] Expo dependency compatibility check passes in CI.
 - [ ] Web and mobile device/browser smoke tests pass (native OAuth and Agora require Android/iOS development builds; Expo export alone does not compile native modules).
-- [ ] CI is green on the latest local-auth PR head after the session-expiry test update: typecheck, unit tests, PostgreSQL integration tests and builds.
+- [x] CI is green on the final implementation head: typecheck, unit tests, PostgreSQL 17 integration tests and web/API/Android/iOS builds (GitHub Actions run 542).
 
 ## Public information and verification
 - [x] Source registry schema records publisher, canonical/feed URLs, terms, licence, attribution, polling interval, retention and robots review.

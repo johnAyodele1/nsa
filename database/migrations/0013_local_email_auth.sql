@@ -14,7 +14,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=pg_catalog,public
-AS $
+AS $auth$
 BEGIN
  IF NEW.email IS NOT NULL AND EXISTS(SELECT 1 FROM public.moderator_invites WHERE email=lower(NEW.email)) THEN
   NEW.role:='moderator';
@@ -22,7 +22,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END;
-$;
+$auth$;
 REVOKE ALL ON FUNCTION assign_invited_moderator_role() FROM PUBLIC;
 CREATE TRIGGER app_users_assign_invited_moderator
  BEFORE INSERT ON app_users
@@ -45,9 +45,9 @@ BEGIN
   IF v_target_id IS NOT NULL THEN UPDATE public.app_users SET role='member',updated_at=now() WHERE id=v_target_id AND role='moderator'; INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_target_id,v_actor_id,'moderator_revoked'); END IF;
  ELSE RAISE EXCEPTION 'Unsupported moderator action' USING ERRCODE='22023'; END IF;
  RETURN QUERY SELECT v_email,p_action;
-END; $$;
+END; $auth$;
 REVOKE ALL ON FUNCTION manage_moderator(char,varchar,varchar) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION manage_moderator(uuid,varchar,varchar) TO nsa_app;
+GRANT EXECUTE ON FUNCTION manage_moderator(char,varchar,varchar) TO nsa_app;
 GRANT SELECT,INSERT,DELETE ON auth_sessions TO nsa_app;
 GRANT UPDATE(last_seen_at) ON auth_sessions TO nsa_app;
 GRANT SELECT ON moderator_invites TO nsa_app;

@@ -105,3 +105,16 @@ Authenticated users can submit privacy-rights requests and request local account
 NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains unavailable until Agora credentials, audience-token enablement, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.
 
 Before public launch: Nigerian privacy/legal review including NDPA 2023, DPIA where appropriate, retention and breach processes, moderation staffing, verified escalation contacts, security testing, and app-store disclosures. This repository is not a launch-ready emergency-response system.
+
+
+## Nigerian news ingestion sources
+
+Migration `0008_seed_nigerian_news_sources.sql` seeds four publisher RSS candidates:
+- Channels Television — `https://www.channelstv.com/feed/`
+- Premium Times — `https://www.premiumtimesng.com/feed`
+- The Punch — `https://rss.punchng.com/v1/category/latest_news`
+- Vanguard — `https://www.vanguardngr.com/feed/`
+
+They are inserted with `approval_status='pending'`. This is deliberate: applying the migration registers the feeds but does not start collecting from them. An authorized operator must first verify the current feed endpoint, publisher terms, robots policy and attribution requirements, then approve each source. The worker only claims approved sources whose robots and terms checks are recorded.
+
+The seed does not claim that official agency websites expose RSS feeds. Nigeria Police Force, Defence Headquarters, NEMA, NiMet and state emergency-management agencies need individually verified feeds or dedicated, terms-compliant website/API adapters before they can be ingested. Do not put ordinary HTML page URLs into the RSS/Atom/JSON Feed adapter or mark them approved just to make the worker collect them. Social network monitoring also requires separate platform-specific integrations and applicable API permissions.

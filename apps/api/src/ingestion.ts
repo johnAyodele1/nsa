@@ -8,11 +8,11 @@ export function createIngestionRouter(pool:Pool|null,authenticate:RequestHandler
   const parsed=moderationQueueQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   try{
-   const result=await pool.query(`SELECT i.id,i.title,i.summary,i.source_url,i.source_published_at,i.created_at,s.publisher_name,s.display_name,s.is_official,s.canonical_url,s.licence_name,s.attribution_text
+   const result=await pool.query(`SELECT i.id,i.title,i.summary,i.source_url,i.source_published_at,i.created_at,i.incident_category,i.priority,i.relevance_score,i.matched_terms,i.detected_state,i.classification_reason,s.publisher_name,s.display_name,s.is_official,s.canonical_url,s.licence_name,s.attribution_text
     FROM source_ingestion_items i JOIN source_registry s ON s.id=i.source_registry_id
-    WHERE i.status='pending_review' AND i.retention_until>now()
-    ORDER BY i.created_at ASC,i.id ASC LIMIT $1`,[parsed.data.limit]);
-   const data=result.rows.map(row=>({id:row.id,title:row.title,summary:row.summary,sourceUrl:row.source_url,sourcePublishedAt:row.source_published_at?new Date(row.source_published_at).toISOString():null,createdAt:new Date(row.created_at).toISOString(),publisherName:row.publisher_name,displayName:row.display_name,isOfficial:row.is_official,canonicalUrl:row.canonical_url,licenceName:row.licence_name,attributionText:row.attribution_text}));
+    WHERE i.status='pending_review' AND i.retention_until>now() AND i.priority IS NOT NULL
+    ORDER BY CASE i.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 ELSE 2 END,i.relevance_score DESC,i.source_published_at DESC NULLS LAST,i.created_at DESC,i.id ASC LIMIT $1`,[parsed.data.limit]);
+   const data=result.rows.map(row=>({id:row.id,title:row.title,summary:row.summary,sourceUrl:row.source_url,sourcePublishedAt:row.source_published_at?new Date(row.source_published_at).toISOString():null,createdAt:new Date(row.created_at).toISOString(),category:row.incident_category,priority:row.priority,relevanceScore:row.relevance_score,matchedTerms:row.matched_terms,detectedState:row.detected_state,classificationReason:row.classification_reason,publisherName:row.publisher_name,displayName:row.display_name,isOfficial:row.is_official,canonicalUrl:row.canonical_url,licenceName:row.licence_name,attributionText:row.attribution_text}));
    return res.status(200).json({data});
   }catch(error){return next(error);}
  });
@@ -32,7 +32,7 @@ export function createIngestionRouter(pool:Pool|null,authenticate:RequestHandler
     await client.query("COMMIT");open=false;return res.status(200).json({data:{itemId:itemId.data,status:"rejected",incidentId:null}});
    }
    const ids=decision.sourceIngestionItemIds??[];
-   const evidence=await client.query(`SELECT i.id,i.title,i.summary,i.source_url,i.source_published_at,i.source_registry_id,s.publisher_name,s.display_name,s.canonical_url,s.is_official
+   const evidence=await client.query(`SELECT i.id,i.title,i.summary,i.source_url,i.source_published_at,i.source_registry_id,i.priority,s.publisher_name,s.display_name,s.canonical_url,s.is_official
     FROM source_ingestion_items i JOIN source_registry s ON s.id=i.source_registry_id
     WHERE i.id=ANY($1::uuid[]) AND i.status='pending_review' AND i.retention_until>now()
       AND s.approval_status='approved' AND s.robots_allowed IS TRUE AND s.terms_reviewed_at IS NOT NULL
@@ -43,9 +43,9 @@ export function createIngestionRouter(pool:Pool|null,authenticate:RequestHandler
    const publishers=new Set(evidence.rows.map(row=>row.publisher_name));
    if(decision.verificationStatus==="corroborated"&&publishers.size<2){await client.query("ROLLBACK");open=false;return res.status(422).json({error:"INSUFFICIENT_INDEPENDENT_PUBLISHERS"});}
    if(decision.verificationStatus==="officially_confirmed"&&!evidence.rows.some(row=>row.is_official)){await client.query("ROLLBACK");open=false;return res.status(422).json({error:"OFFICIAL_SOURCE_REQUIRED"});}
-   const incident=await client.query(`INSERT INTO incidents(title,summary,category,state,locality,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at)
-    VALUES($1,$2,$3,$4,$5,$6,now(),$7,'published',$8,$9,$10,now()) RETURNING id`,
-    [lead.title,lead.summary,decision.category,decision.state,decision.locality??null,decision.occurredAt,decision.verificationStatus,evidence.rows.length,lead.source_url,moderator.id]);
+   const incident=await client.query(`INSERT INTO incidents(title,summary,category,state,locality,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at,priority)
+    VALUES($1,$2,$3,$4,$5,$6,now(),$7,'published',$8,$9,$10,now(),$11) RETURNING id`,
+    [lead.title,lead.summary,decision.category,decision.state,decision.locality??null,decision.occurredAt,decision.verificationStatus,evidence.rows.length,lead.source_url,moderator.id,lead.priority??"medium"]);
    const incidentId=incident.rows[0]?.id as string|undefined;if(!incidentId)throw new Error("Published incident insert returned no ID");
    for(const row of evidence.rows){
     await client.query("INSERT INTO incident_sources(incident_id,source_registry_id,source_name,source_url,rights_review_status) VALUES($1,$2,$3,$4,'approved')",[incidentId,row.source_registry_id,row.display_name,row.source_url]);

@@ -14,6 +14,7 @@ export async function applyMigrations(pool:Pool,directory=migrationsDirectory):P
   await client.query("CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY,applied_at timestamptz NOT NULL DEFAULT now())");
   const files=(await readdir(directory)).filter(file=>/^\d+.*\.sql$/.test(file)).sort();
   if(files.length===0)throw new Error(`No SQL migrations found in ${directory}`);
+  const schemaOwnerMigrations=new Set(["0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql"]);
   for(const file of files){
    if(file>='0006_privacy_erasure.sql'&&!migratorRoleActive){await client.query('SET ROLE nsa_migrator');migratorRoleActive=true;}
    const existing=await client.query("SELECT 1 FROM schema_migrations WHERE version=$1",[file]);
@@ -21,6 +22,8 @@ export async function applyMigrations(pool:Pool,directory=migrationsDirectory):P
    const raw=await readFile(`${directory}/${file}`,"utf8");
    const sql=raw.replace(/^\s*BEGIN\s*;\s*/i,"").replace(/\s*COMMIT\s*;\s*$/i,"").trim();
    if(!sql)throw new Error(`Migration ${file} is empty`);
+   const runAsSchemaOwner=schemaOwnerMigrations.has(file)&&migratorRoleActive;
+   if(runAsSchemaOwner)await client.query("RESET ROLE");
    await client.query("BEGIN");
    try{
     await client.query(sql);
@@ -28,6 +31,7 @@ export async function applyMigrations(pool:Pool,directory=migrationsDirectory):P
     await client.query("COMMIT");
     console.info(`Applied migration ${file}`);
    }catch(error){await client.query("ROLLBACK");throw error;}
+   finally{if(runAsSchemaOwner)await client.query("SET ROLE nsa_migrator");}
   }
  }finally{
   if(lockAcquired){try{await client.query("SELECT pg_advisory_unlock(hashtext($1)::bigint)",["nsa:schema-migrations"]);}catch(error){console.error("Failed to release migration lock",error);}}

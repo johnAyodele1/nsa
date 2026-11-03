@@ -135,12 +135,12 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
  });
  app.get("/v1/incidents",async(req,res,next)=>{
   const parsed=incidentQuerySchema.safeParse(req.query);if(!parsed.success)return res.status(400).json({error:"INVALID_QUERY",details:parsed.error.flatten()});if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
-  const {state,category,limit,cursor}=parsed.data;const params:(string|number)[]=[];const filters=["status = 'published'","deleted_at IS NULL"];
-  if(state){params.push(state);filters.push(`state = $${params.length}`);}if(category){params.push(category);filters.push(`category = $${params.length}`);}
+  const {state,category,priority,limit,cursor}=parsed.data;const params:(string|number)[]=[];const filters=["status = 'published'","deleted_at IS NULL"];
+  if(state){params.push(state);filters.push(`state = $${params.length}`);}if(category){params.push(category);filters.push(`category = $${params.length}`);}if(priority){params.push(priority);filters.push(`priority = $${params.length}`);}
   if(cursor){const decoded=decodeCursor(cursor);if(!decoded)return res.status(400).json({error:"INVALID_CURSOR"});params.push(decoded.publishedAt,decoded.id);filters.push(`(published_at,id) < ($${params.length-1}::timestamptz,$${params.length}::uuid)`);}
   params.push(limit+1);
-  try{const result=await pool.query(`SELECT id,title,summary,category,state,locality,occurred_at,published_at,verification_status,source_count,public_source_url FROM incidents WHERE ${filters.join(" AND ")} ORDER BY published_at DESC,id DESC LIMIT $${params.length}`,params);
-   const hasMore=result.rows.length>limit;const rows=result.rows.slice(0,limit).map(row=>({id:row.id,title:row.title,summary:row.summary,category:row.category,state:row.state,locality:row.locality,occurredAt:new Date(row.occurred_at).toISOString(),publishedAt:new Date(row.published_at).toISOString(),verificationStatus:row.verification_status,sourceCount:row.source_count,publicSourceUrl:row.public_source_url}));
+  try{const result=await pool.query(`SELECT id,title,summary,category,state,locality,occurred_at,published_at,verification_status,priority,source_count,public_source_url FROM incidents WHERE ${filters.join(" AND ")} ORDER BY published_at DESC,id DESC LIMIT $${params.length}`,params);
+   const hasMore=result.rows.length>limit;const rows=result.rows.slice(0,limit).map(row=>({id:row.id,title:row.title,summary:row.summary,category:row.category,state:row.state,locality:row.locality,occurredAt:new Date(row.occurred_at).toISOString(),publishedAt:new Date(row.published_at).toISOString(),verificationStatus:row.verification_status,priority:row.priority,sourceCount:row.source_count,publicSourceUrl:row.public_source_url}));
    const last=rows.at(-1);return res.status(200).json(incidentListResponseSchema.parse({data:rows,nextCursor:hasMore&&last?encodeCursor({publishedAt:last.publishedAt,id:last.id}):null}));
   }catch(error){return next(error);}
  });

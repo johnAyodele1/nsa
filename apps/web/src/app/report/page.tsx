@@ -17,9 +17,9 @@ export default function ReportPage(){
   finally{setSubmitting(false);}
  }
  return <main className="report-shell"><header className="report-header"><Link href="/" className="brand"><span className="mark">N</span><span>NSA<small>NIGERIA SECURITY ALERTS</small></span></Link><Link href="/">Back to incident feed</Link></header><section className="report-intro"><span className="eyebrow">COMMUNITY REPORTING</span><h1>Submit an incident report</h1><p>Reports are private until reviewed. Submitting a report does not create a public alert or contact emergency responders.</p></section>
- {!auth.ready&&<p className="auth-state">Preparing secure sign-in…</p>}{auth.error&&<p className="form-message" role="alert">{auth.error}</p>}
- {auth.ready&&!auth.configured&&<div className="report-panel"><h2>Reporting is not configured</h2><p>The OIDC identity provider must be configured by the application operator before authenticated reports can be accepted.</p></div>}
- {auth.ready&&auth.configured&&!auth.authenticated&&<div className="report-panel"><h2>Sign in to continue</h2><p>Sign-in is handled by the configured identity provider. NSA does not ask you to enter a password here.</p><button className="report-submit" onClick={()=>void auth.signIn()}>Sign in securely</button></div>}
+ {!auth.ready&&<p className="auth-state">Checking your account…</p>}{auth.error&&<p className="form-message" role="alert">{auth.error}</p>}
+ {auth.ready&&!auth.configured&&<div className="report-panel"><h2>Reporting is not configured</h2><p>Local email/password authentication is not configured. Check the API and web session environment settings.</p></div>}
+ {auth.ready&&auth.configured&&!auth.authenticated&&<div className="report-panel"><h2>Sign in to continue</h2><p>Sign in with your NSA email address and password.</p><button className="report-submit" onClick={()=>void auth.signIn()}>Sign in with email</button></div>}
  {auth.authenticated&&<><form className="report-panel report-form" onSubmit={submit}><h2>Incident details</h2><p>Do not include names, phone numbers, home addresses or other personal details about people involved.</p>
  <label>Incident title<input required minLength={8} maxLength={180} value={form.title} onChange={event=>update("title",event.target.value)} placeholder="Short description of what happened"/></label>
  <label>What happened?<textarea required minLength={20} maxLength={2000} rows={5} value={form.summary} onChange={event=>update("summary",event.target.value)} placeholder="Describe only what you directly observed or can support."/></label>

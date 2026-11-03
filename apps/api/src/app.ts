@@ -8,6 +8,7 @@ import {createIngestionRouter} from "./ingestion.js";
 import {createLiveRouter,type AgoraConfig} from "./live.js";
 import {createPrivacyRouter} from "./privacy.js";
 import {createHash,randomUUID} from "node:crypto";
+import {createAuthRouter} from "./local-auth.js";
 import {incidentListResponseSchema,incidentQuerySchema,reportSubmissionSchema,reportSubmissionResponseSchema,reportModerationDecisionSchema,moderationQueueQuerySchema,reportListQuerySchema,reportListResponseSchema,moderationSourceListResponseSchema,agencyDirectoryResponseSchema,emergencyContactQuerySchema,emergencyContactListResponseSchema} from "@nsa/contracts";
 const cursorPayloadSchema=z.object({publishedAt:z.string().datetime(),id:z.string().uuid()}).strict();
 type Dependencies={pool:Pool|null;allowedOrigins:string[];authMiddleware?:RequestHandler|undefined;agoraConfig?:AgoraConfig};
@@ -40,6 +41,7 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
  app.get("/health/live",(_req,res)=>res.status(200).json({status:"ok"}));
  app.get("/health/ready",async(_req,res)=>{if(!pool)return res.status(503).json({status:"not_ready",database:"not_configured"});try{await pool.query("SELECT 1");return res.status(200).json({status:"ready",database:"connected"});}catch{return res.status(503).json({status:"not_ready",database:"unavailable"});}});
  const authenticate=authMiddleware??authNotConfigured;
+ app.use("/v1/auth",createAuthRouter(pool!,authenticate));
  app.use("/v1/moderation/ingestion-items",createIngestionRouter(pool,authenticate,requireModerator(pool)));
  app.use("/v1/live-sessions",createLiveRouter(pool,authenticate,requireModerator(pool),agoraConfig??null));
  app.use("/v1",createPrivacyRouter(pool,authenticate,requireModerator(pool)));

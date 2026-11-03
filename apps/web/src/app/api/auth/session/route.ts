@@ -2,8 +2,13 @@ import {NextRequest,NextResponse} from "next/server";
 import {CSRF_COOKIE,currentWebSession} from "../../../../server/session";
 export async function GET(request:NextRequest){
  const key=process.env.WEB_SESSION_ENCRYPTION_KEY;let keyValid=false;try{keyValid=Boolean(key&&Buffer.from(key,"base64").length===32);}catch{}
- let originValid=false;try{const origin=new URL(process.env.WEB_PUBLIC_ORIGIN??"");originValid=origin.origin===process.env.WEB_PUBLIC_ORIGIN&&(process.env.NODE_ENV!=="production"||origin.protocol==="https:");}catch{}
- const configured=Boolean(process.env.OIDC_ISSUER_URL&&process.env.NEXT_PUBLIC_OIDC_CLIENT_ID&&process.env.WEB_SESSION_DATABASE_URL&&keyValid&&originValid&&process.env.API_INTERNAL_URL&&process.env.OIDC_JWKS_URL&&process.env.OIDC_AUDIENCE);
- try{const session=await currentWebSession();return NextResponse.json({configured,authenticated:Boolean(session),csrfToken:session?request.cookies.get(CSRF_COOKIE)?.value??null:null},{headers:{"cache-control":"no-store"}});}
- catch{return NextResponse.json({configured:false,authenticated:false,csrfToken:null},{headers:{"cache-control":"no-store"}});}
+ const configured=Boolean(process.env.API_INTERNAL_URL&&process.env.WEB_SESSION_DATABASE_URL&&keyValid);
+ try{
+  const session=await currentWebSession();if(!session)return NextResponse.json({configured,authenticated:false,user:null,csrfToken:null},{headers:{"cache-control":"no-store"}});
+  const base=process.env.API_INTERNAL_URL;if(!base)return NextResponse.json({configured:false,authenticated:false,user:null,csrfToken:null},{headers:{"cache-control":"no-store"}});
+  const response=await fetch(new URL("/v1/auth/me",base),{headers:{authorization:"Bearer "+session.accessToken,accept:"application/json"},cache:"no-store",redirect:"error",signal:AbortSignal.timeout(8000)});
+  if(!response.ok)return NextResponse.json({configured,authenticated:false,user:null,csrfToken:null},{headers:{"cache-control":"no-store"}});
+  const result=await response.json() as {data?:{id:string;email:string;role:"member"|"moderator"|"admin"}};
+  return NextResponse.json({configured,authenticated:Boolean(result.data),user:result.data??null,csrfToken:request.cookies.get(CSRF_COOKIE)?.value??null},{headers:{"cache-control":"no-store"}});
+ }catch{return NextResponse.json({configured:false,authenticated:false,user:null,csrfToken:null},{headers:{"cache-control":"no-store"}});}
 }

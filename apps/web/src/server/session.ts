@@ -5,7 +5,7 @@ export const SESSION_COOKIE=process.env.NODE_ENV==="production"?"__Host-nsa_sess
 export const CSRF_COOKIE=process.env.NODE_ENV==="production"?"__Host-nsa_csrf":"nsa_csrf";
 export type WebSession={auth_subject:string;access_token_ciphertext:Buffer;access_token_iv:Buffer;access_token_tag:Buffer;csrf_token_hash:string;expires_at:Date;accessToken:string};
 let pool:Pool|undefined;
-function database(){const url=process.env.WEB_SESSION_DATABASE_URL;if(!url)throw new Error("WEB_SESSION_DATABASE_URL is required");pool??=new Pool({connectionString:url,max:5,connectionTimeoutMillis:5000,idleTimeoutMillis:30000,statement_timeout:5000,application_name:"nsa-web-session"});return pool;}
+function database(){const url=process.env.WEB_SESSION_DATABASE_URL??process.env.DATABASE_URL;if(!url)throw new Error("WEB_SESSION_DATABASE_URL or DATABASE_URL is required; point it at the same NSA PostgreSQL database as the API.");pool??=new Pool({connectionString:url,max:5,connectionTimeoutMillis:5000,idleTimeoutMillis:30000,statement_timeout:5000,application_name:"nsa-web-session"});return pool;}
 function encryptionKey(){const value=process.env.WEB_SESSION_ENCRYPTION_KEY;if(!value)throw new Error("WEB_SESSION_ENCRYPTION_KEY is required");const key=Buffer.from(value,"base64");if(key.length!==32)throw new Error("WEB_SESSION_ENCRYPTION_KEY must be base64 for 32 bytes");return key;}
 export const sha256=(value:string)=>createHash("sha256").update(value).digest("hex");
 export function encryptAccessToken(token:string){const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",encryptionKey(),iv),ciphertext=Buffer.concat([cipher.update(token,"utf8"),cipher.final()]);return {ciphertext,iv,tag:cipher.getAuthTag()};}

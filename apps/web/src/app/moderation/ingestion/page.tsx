@@ -86,10 +86,10 @@ export default function IngestionModerationPage(){
  return <main className="mod-shell">
   <header className="mod-header"><Link className="brand" href="/"><span className="mark">N</span><span>NSA<small>NIGERIA SECURITY ALERTS</small></span></Link><Link className="mod-back" href="/moderation">Report moderation ↗</Link></header>
   <section className="mod-intro"><span className="eyebrow">SOURCE INGESTION</span><h1>Incident triage</h1><p>Only articles classified as public-safety relevant enter this queue. Priority is an urgency signal, not proof that an incident happened. Check the original source and independent evidence before publication.</p></section>
-  {!auth.ready&&<p className="mod-notice">Preparing secure sign-in…</p>}
+  {!auth.ready&&<p className="mod-notice">Checking your account…</p>}
   {auth.error&&<p className="mod-error" role="alert">{auth.error}</p>}
-  {auth.ready&&!auth.configured&&<section className="mod-login"><h2>Authentication is not configured</h2><p>Configure the OIDC issuer and client ID for the web app and matching API verification settings.</p></section>}
-  {auth.ready&&auth.configured&&!auth.authenticated&&<section className="mod-login"><h2>Moderator access</h2><p>Sign in with a moderator or administrator account.</p><button onClick={()=>void auth.signIn()}>Sign in securely</button></section>}
+  {auth.ready&&!auth.configured&&<section className="mod-login"><h2>Authentication is not configured</h2><p>Configure the local API database and web session encryption settings.</p></section>}
+  {auth.ready&&auth.configured&&!auth.authenticated&&<section className="mod-login"><h2>Moderator access</h2><p>Sign in with a moderator or administrator account.</p><button onClick={()=>void auth.signIn()}>Sign in with email</button></section>}
   {auth.authenticated&&<>
    <section className="mod-queue">
     <div className="mod-queue-head"><div><span className="eyebrow">TRIAGE QUEUE</span><h2>{items.length} relevant items</h2></div><div className="mod-actions"><button className="mod-secondary" onClick={()=>void loadQueue()} disabled={loading}>{loading?"Refreshing…":"Refresh"}</button><button className="mod-secondary" onClick={()=>void auth.signOut()}>Sign out</button></div></div>

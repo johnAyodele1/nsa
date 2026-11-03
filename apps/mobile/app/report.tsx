@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,Text
 import {Link} from "expo-router";
 import {incidentCategorySchema,nigerianStateSchema,reportListResponseSchema,reportSubmissionResponseSchema,reportSubmissionSchema,type IncidentCategory,type NigerianState} from "@nsa/contracts";
 import {useNsaMobileAuth} from "../src/auth/MobileAuthProvider";
+import {MobileAuthForm} from "../src/auth/MobileAuthForm";
 const API=process.env.EXPO_PUBLIC_API_URL??"http://localhost:4000";
 type FormState={title:string;summary:string;category:IncidentCategory|"";state:NigerianState|"";locality:string;date:string;time:string;sourceUrl:string};
 const initialForm:FormState={title:"",summary:"",category:"",state:"",locality:"",date:"",time:"",sourceUrl:""};
@@ -25,8 +26,8 @@ export default function ReportScreen(){
  return <SafeAreaView style={s.screen}><View style={s.header}><View><Text style={s.brand}>NSA</Text><Text style={s.sub}>COMMUNITY REPORTING</Text></View><Link href="/" style={s.back}>INCIDENT FEED ↗</Link></View><ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled"><Text style={s.kicker}>REPORT SAFELY</Text><Text style={s.hero}>Share what{"\n"}<Text style={s.accent}>you know.</Text></Text><Text style={s.intro}>Reports stay private until reviewed. Do not include names, phone numbers, home addresses or personal details about people involved.</Text>
  {!auth.ready&&<ActivityIndicator color="#b7f36b" style={{marginTop:28}}/>}
  {auth.error&&<Text style={s.error}>{auth.error}</Text>}
- {auth.ready&&!auth.configured&&<View style={s.panel}><Text style={s.panelTitle}>Reporting is not configured</Text><Text style={s.body}>The application operator must configure the identity provider before reports can be submitted.</Text></View>}
- {auth.configured&&!auth.authenticated&&<View style={s.panel}><Text style={s.panelTitle}>Sign in to report</Text><Text style={s.body}>Sign-in opens your configured identity provider. NSA does not ask you to enter your password inside this app.</Text><Pressable style={s.primary} onPress={()=>void auth.signIn()}><Text style={s.primaryText}>SIGN IN SECURELY</Text></Pressable></View>}
+ {auth.ready&&!auth.configured&&<View style={s.panel}><Text style={s.panelTitle}>Reporting is not configured</Text><Text style={s.body}>Set the NSA API URL to enable email and password accounts.</Text></View>}
+ {auth.configured&&!auth.authenticated&&<View style={s.panel}><Text style={s.panelTitle}>Sign in to report</Text><Text style={s.body}>Sign in or create an account using your email address and password.</Text><MobileAuthForm/></View>}
  {auth.authenticated&&<><View style={s.panel}><Text style={s.panelTitle}>Incident details</Text><Text style={s.label}>TITLE</Text><TextInput style={s.input} value={form.title} onChangeText={value=>update("title",value)} placeholder="Short description of what happened" placeholderTextColor="#718078" maxLength={180}/>
  <Text style={s.label}>WHAT HAPPENED?</Text><TextInput style={[s.input,s.multiline]} value={form.summary} onChangeText={value=>update("summary",value)} placeholder="Describe only what you directly observed or can support." placeholderTextColor="#718078" multiline textAlignVertical="top" maxLength={2000}/>
  <Text style={s.label}>INCIDENT TYPE</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>{incidentCategorySchema.options.map(value=><Pressable key={value} onPress={()=>update("category",value)} style={[s.chip,form.category===value&&s.chipActive]}><Text style={[s.chipText,form.category===value&&s.chipTextActive]}>{value.replaceAll("_"," ")}</Text></Pressable>)}</ScrollView>

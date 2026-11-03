@@ -5,6 +5,7 @@ declare global {
    auth?:AuthContext;
    requestId?:string;
    moderator?:{id:string;role:"moderator"|"admin"};
+   user?:{id:string;role:"member"|"moderator"|"admin"};
   }
  }
 }

@@ -1,24 +1,28 @@
 import {afterAll,beforeAll,describe,expect,it} from "vitest";
+import {createHash} from "node:crypto";
 import type {RequestHandler} from "express";
 import pg from "pg";
 import request from "supertest";
 import {createApp} from "../src/app.js";
+import {createLocalAuthMiddleware} from "../src/local-auth.js";
 import {applyMigrations} from "../src/migrate.js";
 const {Pool}=pg;
 const databaseUrl=process.env.DATABASE_URL;
 const reportAuth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"integration|member"};next();};
-const moderatorAuth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"integration|moderator"};next();};
 describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integration",()=>{
  const pool=new Pool({connectionString:databaseUrl});
  const app=createApp({pool,allowedOrigins:[]});
  const authenticatedApp=createApp({pool,allowedOrigins:[],authMiddleware:reportAuth});
- const moderationApp=createApp({pool,allowedOrigins:[],authMiddleware:moderatorAuth});
+ const localAuthApp=createApp({pool,allowedOrigins:[],authMiddleware:createLocalAuthMiddleware(pool)});
+ const moderationApp=localAuthApp;
+ const moderatorToken="M".repeat(43);
  let sourceRegistryId="";let reportId="";
  beforeAll(async()=>{
   await Promise.all([applyMigrations(pool),applyMigrations(pool)]);await applyMigrations(pool);
   await pool.query("TRUNCATE report_moderation_audit,incident_reports,app_users,moderation_audit,incident_sources,incidents,source_registry RESTART IDENTITY CASCADE");
   const moderatorId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   await pool.query("INSERT INTO app_users(id,auth_subject,role) VALUES($1,$2,'moderator')",[moderatorId,"integration|moderator"]);
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[createHash("sha256").update(moderatorToken).digest("hex"),moderatorId]);
   const source=await pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url,licence_name,attribution_text,is_official,robots_checked_at,robots_allowed,terms_reviewed_at,approval_status,approved_by,approved_at) VALUES($1,$2,$3,$4,'api',$5,$6,$7,true,now(),true,now(),'approved',$8,now()) RETURNING id",["Lagos Emergency Management Agency","Lagos Emergency Management Agency","https://agency.gov.ng","https://agency.gov.ng/public-notices","https://agency.gov.ng/terms","Public notices","Source attribution required",moderatorId]);
   sourceRegistryId=source.rows[0].id;
   const insert=`INSERT INTO incidents(id,title,summary,category,state,locality,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`;
@@ -32,7 +36,69 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records every migration once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql"]);
+ });
+ it("registers, signs in, resolves and revokes local email/password sessions",async()=>{
+  const email="auth-integration@example.test";const password="correct-horse-battery-staple-2026";
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email,password}).expect(201);
+  const firstToken=registered.body.data.accessToken as string;
+  expect(registered.body.data.user).toMatchObject({email,role:"member"});
+  const stored=await pool.query("SELECT password_hash FROM app_users WHERE email=$1",[email]);
+  expect(stored.rows[0].password_hash.startsWith("scrypt$16384$8$1$")).toBe(true);
+  expect(stored.rows[0].password_hash).not.toBe(password);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+firstToken).expect(200);
+  await request(localAuthApp).post("/v1/auth/logout").set("authorization","Bearer "+firstToken).expect(200);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+firstToken).expect(401);
+  await request(localAuthApp).post("/v1/auth/login").send({email,password}).expect(200);
+  await request(localAuthApp).post("/v1/auth/login").send({email,password:"wrong-password-value"}).expect(401);
+ });
+ it("clears local credentials and revokes sessions during account erasure",async()=>{
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email:"erase-local@example.test",password:"account-erasure-password-2026"}).expect(201);
+  const token=registered.body.data.accessToken as string;const subject=registered.body.data.user.authSubject as string;
+  await pool.query("SELECT request_account_erasure($1,$2)",[subject,createHash("sha256").update(subject).digest("hex")]);
+  const user=await pool.query("SELECT is_active,email,password_hash,role FROM app_users WHERE auth_subject LIKE 'erased:%' AND id=$1",[registered.body.data.user.id]);
+  expect(user.rows[0]).toMatchObject({is_active:false,email:null,password_hash:null,role:"member"});
+  expect((await pool.query("SELECT session_id_hash FROM auth_sessions WHERE user_id=$1",[registered.body.data.user.id])).rows).toHaveLength(0);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+token).expect(401);
+ });
+ it("requires the one-time invite code to claim an existing email as moderator",async()=>{
+  const email="new-moderator@example.test";
+  const existing=await request(localAuthApp).post("/v1/auth/register").send({email,password:"old-member-password-2026"}).expect(201);
+  const oldToken=existing.body.data.accessToken as string;
+  const admin=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash,role) VALUES($1,$2,$3,'admin') RETURNING id",["integration:admin","root@example.test","scrypt-placeholder"]);
+  const token="A".repeat(43),tokenHash=createHash("sha256").update(token).digest("hex");
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,admin.rows[0].id]);
+  const invitation=await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email}).expect(201);
+  const inviteCode=invitation.body.data.inviteCode as string;expect(inviteCode).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",[email])).rows).toHaveLength(1);
+  await request(localAuthApp).post("/v1/auth/register").send({email,password:"new-moderator-password-2026"}).expect(403,{error:"MODERATOR_INVITE_CODE_REQUIRED"});
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email,password:"new-moderator-password-2026",moderatorInviteToken:inviteCode}).expect(201);
+  const moderatorId=registered.body.data.user.id as string;const newToken=registered.body.data.accessToken as string;
+  expect(registered.body.data.user.role).toBe("moderator");
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",[email])).rows).toHaveLength(0);
+  expect((await pool.query("SELECT action FROM user_role_audit WHERE target_user_id=$1",[moderatorId])).rows.map(row=>row.action)).toEqual(["moderator_invited"]);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+oldToken).expect(401);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+newToken).expect(200);
+  await request(localAuthApp).post("/v1/auth/admin/moderators/revoke").set("authorization","Bearer "+token).send({email}).expect(200);
+  expect((await pool.query("SELECT role FROM app_users WHERE id=$1",[moderatorId])).rows[0].role).toBe("member");
+ });
+ it("creates a new moderator account from a one-time invitation code",async()=>{
+  const admin=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash,role) VALUES($1,$2,$3,'admin') RETURNING id",["integration:admin-new","root-new@example.test","scrypt-placeholder"]);
+  const token="C".repeat(43),tokenHash=createHash("sha256").update(token).digest("hex");
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,admin.rows[0].id]);
+  const invitation=await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email:"brand-new-moderator@example.test"}).expect(201);
+  const inviteCode=invitation.body.data.inviteCode as string;
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email:"brand-new-moderator@example.test",password:"brand-new-moderator-password",moderatorInviteToken:inviteCode}).expect(201);
+  expect(registered.body.data.user.role).toBe("moderator");
+  const audit=await pool.query("SELECT action FROM user_role_audit WHERE target_user_id=$1",[registered.body.data.user.id]);
+  expect(audit.rows.map(row=>row.action)).toEqual(["moderator_invited"]);
+ });
+ it("rejects moderator management without an active admin session",async()=>{
+  const member=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash) VALUES($1,$2,$3) RETURNING id",["integration:member","member@example.test","scrypt-placeholder"]);
+  const token="B".repeat(43),tokenHash=createHash("sha256").update(token).digest("hex");
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,member.rows[0].id]);
+  await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email:"bad-invite@example.test"}).expect(403);
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["bad-invite@example.test"])).rows).toHaveLength(0);
  });
  it("serves the official agency directory with source-linked contact details",async()=>{
   const response=await request(app).get("/v1/agencies").expect(200);
@@ -71,18 +137,18 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  });
  it("allows only moderators to see the review queue and hides reporter identity",async()=>{
   await request(authenticatedApp).get("/v1/moderation/reports").expect(403);
-  const response=await request(moderationApp).get("/v1/moderation/reports").expect(200);expect(response.body.data.some((item:{id:string})=>item.id===reportId)).toBe(true);expect(JSON.stringify(response.body)).not.toContain("integration|member");
-  const sources=await request(moderationApp).get("/v1/moderation/sources").expect(200);expect(sources.body.data).toHaveLength(1);expect(sources.body.data[0]).toMatchObject({publisherName:"Lagos Emergency Management Agency",isOfficial:true});
+  const response=await request(moderationApp).get("/v1/moderation/reports").set("authorization","Bearer "+moderatorToken).expect(200);expect(response.body.data.some((item:{id:string})=>item.id===reportId)).toBe(true);expect(JSON.stringify(response.body)).not.toContain("integration|member");
+  const sources=await request(moderationApp).get("/v1/moderation/sources").set("authorization","Bearer "+moderatorToken).expect(200);expect(sources.body.data).toHaveLength(1);expect(sources.body.data[0]).toMatchObject({publisherName:"Lagos Emergency Management Agency",isOfficial:true});
   await request(authenticatedApp).get("/v1/moderation/sources").expect(403);
  });
  it("requires approved official evidence before publishing a report",async()=>{
-  const response=await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).send({decision:"approve",reason:"Confirmed against the agency-owned public notice.",verificationStatus:"officially_confirmed",sources:[{sourceRegistryId,sourceUrl:"https://agency.gov.ng/notices/123"}]}).expect(200);
+  const response=await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).set("authorization","Bearer "+moderatorToken).send({decision:"approve",reason:"Confirmed against the agency-owned public notice.",verificationStatus:"officially_confirmed",sources:[{sourceRegistryId,sourceUrl:"https://agency.gov.ng/notices/123"}]}).expect(200);
   const incidentId=response.body.data.incidentId;
   const stored=await pool.query("SELECT r.status,r.incident_id,i.status AS incident_status,i.verification_status FROM incident_reports r JOIN incidents i ON i.id=r.incident_id WHERE r.id=$1",[reportId]);
   expect(stored.rows[0]).toMatchObject({status:"approved",incident_status:"published",verification_status:"officially_confirmed"});expect(stored.rows[0].incident_id).toBe(incidentId);
   const evidence=await pool.query("SELECT source_registry_id,source_url FROM incident_sources WHERE incident_id=$1",[incidentId]);expect(evidence.rows).toHaveLength(1);expect(evidence.rows[0].source_registry_id).toBe(sourceRegistryId);
  });
- it("prevents a report from being moderated twice",async()=>{await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).send({decision:"reject",reason:"Duplicate moderation attempt"}).expect(409,{error:"REPORT_ALREADY_REVIEWED"});});
+ it("prevents a report from being moderated twice",async()=>{await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).set("authorization","Bearer "+moderatorToken).send({decision:"reject",reason:"Duplicate moderation attempt"}).expect(409,{error:"REPORT_ALREADY_REVIEWED"});});
  it("rejects incident locations outside Nigeria",async()=>{await expect(pool.query("INSERT INTO incidents(title,summary,category,state,occurred_at) VALUES($1,$2,$3,$4,now())",["Invalid geography report","This report should fail because its location is not within Nigeria.","robbery","Accra"])).rejects.toThrow();});
  it("does not allow an unverified or source-less incident to be published",async()=>{await expect(pool.query("INSERT INTO incidents(title,summary,category,state,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at) VALUES($1,$2,$3,$4,now(),now(),'unverified','published',0,NULL,$5,now())",["Unverified public claim","This claim has not been corroborated and must not be published as a fact.","robbery","Lagos","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();});
  it("does not allow an unreviewed source to be marked approved",async()=>{await expect(pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,approval_status) VALUES($1,$2,$3,$4,$5,$6)",["Unreviewed Publisher","Unreviewed Feed","https://example.org","https://example.org/feed.xml","rss","approved"])).rejects.toThrow();});

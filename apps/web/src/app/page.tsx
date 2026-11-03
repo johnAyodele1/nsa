@@ -12,8 +12,8 @@ export default function HomePage(){
  const [loadingMore,setLoadingMore]=useState(false);
  const [moreError,setMoreError]=useState(false);
  const filterKey=`${state}|${category}|${priority}`;
- activeFilter.current=filterKey;
  const activeFilter=useRef(filterKey);
+ activeFilter.current=filterKey;
  useEffect(()=>{
   const controller=new AbortController();activeFilter.current=filterKey;setStatus("loading");setItems([]);setNextCursor(null);setMoreError(false);
   const params=new URLSearchParams({limit:"20"});if(state)params.set("state",state);if(category)params.set("category",category);if(priority)params.set("priority",priority);
@@ -23,7 +23,7 @@ export default function HomePage(){
  async function loadMore(){
   if(!nextCursor||loadingMore)return;
   const requestedFilter=filterKey;setLoadingMore(true);setMoreError(false);
-  const params=new URLSearchParams({limit:"20",cursor:nextCursor});if(state)params.set("state",state);if(category)params.set("category",category);
+  const params=new URLSearchParams({limit:"20",cursor:nextCursor});if(state)params.set("state",state);if(category)params.set("category",category);if(priority)params.set("priority",priority);
   try{const response=await fetch(`${API}/v1/incidents?${params.toString()}`);if(!response.ok)throw new Error("Unable to load more incidents");const data=incidentListResponseSchema.parse(await response.json());if(activeFilter.current===requestedFilter){setItems(current=>[...current,...data.data]);setNextCursor(data.nextCursor);}}
   catch{if(activeFilter.current===requestedFilter)setMoreError(true);}
   finally{setLoadingMore(false);}

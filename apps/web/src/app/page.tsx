@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
+import {apiFetch} from "../lib/api";
 import {incidentListResponseSchema,nigerianStateSchema,incidentCategorySchema,type Incident,type NigerianState,type IncidentCategory,type IncidentPriority,incidentPrioritySchema} from "@nsa/contracts";
-const API=process.env.NEXT_PUBLIC_API_URL??"http://localhost:4000";
 export default function HomePage(){
  const [items,setItems]=useState<Incident[]>([]);
  const [status,setStatus]=useState<"loading"|"ready"|"unavailable">("loading");
@@ -16,14 +16,14 @@ export default function HomePage(){
  useEffect(()=>{
   const controller=new AbortController();activeFilter.current=filterKey;setStatus("loading");setItems([]);setNextCursor(null);setMoreError(false);
   const params=new URLSearchParams({limit:"20"});if(state)params.set("state",state);if(category)params.set("category",category);if(priority)params.set("priority",priority);
-  fetch(`${API}/v1/incidents?${params.toString()}`,{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error("Feed unavailable");return incidentListResponseSchema.parse(await response.json());}).then(data=>{setItems(data.data);setNextCursor(data.nextCursor);setStatus("ready");}).catch((error:unknown)=>{if(!(error instanceof Error&&error.name==="AbortError"))setStatus("unavailable");});
+  apiFetch(`v1/incidents?${params.toString()}`,{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error("Feed unavailable");return incidentListResponseSchema.parse(await response.json());}).then(data=>{setItems(data.data);setNextCursor(data.nextCursor);setStatus("ready");}).catch((error:unknown)=>{if(!(error instanceof Error&&error.name==="AbortError"))setStatus("unavailable");});
   return()=>controller.abort();
  },[state,category,priority,filterKey]);
  async function loadMore(){
   if(!nextCursor||loadingMore)return;
   const requestedFilter=filterKey;setLoadingMore(true);setMoreError(false);
   const params=new URLSearchParams({limit:"20",cursor:nextCursor});if(state)params.set("state",state);if(category)params.set("category",category);if(priority)params.set("priority",priority);
-  try{const response=await fetch(`${API}/v1/incidents?${params.toString()}`);if(!response.ok)throw new Error("Unable to load more incidents");const data=incidentListResponseSchema.parse(await response.json());if(activeFilter.current===requestedFilter){setItems(current=>[...current,...data.data]);setNextCursor(data.nextCursor);}}
+  try{const response=await apiFetch(`v1/incidents?${params.toString()}`);if(!response.ok)throw new Error("Unable to load more incidents");const data=incidentListResponseSchema.parse(await response.json());if(activeFilter.current===requestedFilter){setItems(current=>[...current,...data.data]);setNextCursor(data.nextCursor);}}
   catch{if(activeFilter.current===requestedFilter)setMoreError(true);}
   finally{setLoadingMore(false);}
  }

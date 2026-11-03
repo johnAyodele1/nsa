@@ -39,7 +39,8 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [ ] Native email/password registration and sign-in use iOS Keychain / Android Keystore through SecureStore.
 - [ ] Bootstrap the first super admin once from `NSA_SUPER_ADMIN_EMAIL` and `NSA_SUPER_ADMIN_PASSWORD` using the dedicated migration database connection.
 - [ ] Super admin can invite moderator email addresses, list active/invited moderators and revoke moderator access.
-- [ ] Pending moderator invitations promote the matching account only when that email registers.
+- [ ] Moderator invitations use a random one-time code (only its SHA-256 hash is stored), expire after seven days, and require the matching email plus code to claim.
+- [ ] Claiming an invitation for an existing account sets a new password, grants moderator access and revokes all previous sessions.
 - [ ] Database role-management function enforces an active admin actor; ordinary API users cannot assign roles.
 - [ ] Local sessions are random, hashed in storage, expire, and can be revoked on sign-out or account deactivation.
 - [ ] Account erasure clears local credentials and revokes every active session.

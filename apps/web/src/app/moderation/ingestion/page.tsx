@@ -53,7 +53,7 @@ export default function IngestionModerationPage(){
  function chooseLead(item:IngestionQueueItem){
   setLeadId(item.id);setCategory(item.category);setState("");
   setLocality("");setOccurredAt("");
-  setSelectedIds(current=>current.includes(item.id)?current:[...current,item.id]);
+  setSelectedIds([item.id]);
  }
  function toggleEvidence(id:string,checked:boolean){
   setSelectedIds(current=>checked?(current.length>=5?current:[...current,id]):current.filter(value=>value!==id));

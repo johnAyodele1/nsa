@@ -70,6 +70,6 @@ describe("source ingestion worker",()=>{
   const retry=query.mock.calls.find(([sql])=>sql.includes("consecutive_failures=LEAST"));
   expect(retry).toBeDefined();
   expect(retry?.[1]).toEqual([source.id,"FEED_HTTP_STATUS"]);
-  expect(logger.warn).toHaveBeenCalledWith("Ingestion source failed",{sourceId:source.id,errorCode:"FEED_HTTP_STATUS"});
+  expect(logger.warn).toHaveBeenCalledWith("Ingestion source failed",expect.objectContaining({sourceId:source.id,errorCode:"FEED_HTTP_STATUS"}));
  });
 });

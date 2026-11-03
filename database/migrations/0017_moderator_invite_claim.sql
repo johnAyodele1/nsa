@@ -38,7 +38,7 @@ BEGIN
  IF v_email IS NULL OR length(v_email)>254 OR position('@' in v_email)<2 OR position('.' in split_part(v_email,'@',2))<2 OR p_invite_token_hash IS NULL OR p_invite_token_hash !~ '^[a-f0-9]{64}$' OR p_password_hash IS NULL OR p_password_hash NOT LIKE 'scrypt$16384$8$1$%' OR p_auth_subject IS NULL OR p_auth_subject NOT LIKE 'local:%' OR length(p_auth_subject)>255 THEN RAISE EXCEPTION 'Invalid moderator invitation claim' USING ERRCODE='22023'; END IF;
  SELECT created_by INTO v_actor_id FROM public.moderator_invites WHERE moderator_invites.email=v_email AND invite_token_hash=p_invite_token_hash AND created_at>now()-interval '7 days' FOR UPDATE;
  IF v_actor_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.app_users WHERE id=v_actor_id AND role='admin' AND is_active IS TRUE) THEN RAISE EXCEPTION 'Moderator invitation is invalid or expired' USING ERRCODE='42501'; END IF;
- SELECT id,auth_subject,role,is_active INTO v_user_id,v_auth_subject,v_role,v_active FROM public.app_users WHERE lower(app_users.email)=v_email FOR UPDATE;
+ SELECT app_users.id,app_users.auth_subject,app_users.role,app_users.is_active INTO v_user_id,v_auth_subject,v_role,v_active FROM public.app_users WHERE lower(app_users.email)=v_email FOR UPDATE;
  IF v_user_id IS NOT NULL THEN
   IF v_active IS NOT TRUE OR v_role='admin' THEN RAISE EXCEPTION 'This account cannot claim moderator access' USING ERRCODE='42501'; END IF;
   UPDATE public.app_users SET password_hash=p_password_hash,role='moderator',updated_at=now() WHERE id=v_user_id;

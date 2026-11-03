@@ -5,10 +5,10 @@ export async function POST(request:NextRequest){
  if(!origin||origin!==expected)return NextResponse.json({error:"ORIGIN_VALIDATION_FAILED"},{status:403});
  const base=process.env.API_INTERNAL_URL;if(!base)return NextResponse.json({error:"API_NOT_CONFIGURED"},{status:503});
  try{
-  const body=await request.json() as {email?:unknown;password?:unknown};
-  if(typeof body.email!=="string"||typeof body.password!=="string"||body.email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)||body.password.length<12||body.password.length>128)return NextResponse.json({error:"INVALID_CREDENTIALS"},{status:400});
+  const body=await request.json() as {email?:unknown;password?:unknown;moderatorInviteToken?:unknown};
+  if(typeof body.email!=="string"||typeof body.password!=="string"||body.email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)||body.password.length<12||body.password.length>128||(body.moderatorInviteToken!==undefined&&(typeof body.moderatorInviteToken!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(body.moderatorInviteToken))))return NextResponse.json({error:"INVALID_CREDENTIALS"},{status:400});
   const api=new URL("/v1/auth/register",base);if(process.env.NODE_ENV==="production"&&api.protocol!=="https:")return NextResponse.json({error:"API_HTTPS_REQUIRED"},{status:503});
-  const upstream=await fetch(api,{method:"POST",headers:{"content-type":"application/json",accept:"application/json"},body:JSON.stringify({email:body.email,password:body.password}),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(10000)});
+  const upstream=await fetch(api,{method:"POST",headers:{"content-type":"application/json",accept:"application/json"},body:JSON.stringify({email:body.email,password:body.password,...(body.moderatorInviteToken?{moderatorInviteToken:body.moderatorInviteToken}:{})}),cache:"no-store",redirect:"error",signal:AbortSignal.timeout(10000)});
   const result=await upstream.json() as {error?:string;data?:{user?:{authSubject?:string};accessToken?:string;expiresAt?:string}};
   if(!upstream.ok||!result.data?.user?.authSubject||!result.data.accessToken||!result.data.expiresAt)return NextResponse.json({error:result.error??"REGISTRATION_FAILED"},{status:upstream.status||502,headers:{"cache-control":"no-store"}});
   const expiresAt=new Date(result.data.expiresAt);if(!Number.isFinite(expiresAt.getTime())||expiresAt<=new Date())return NextResponse.json({error:"INVALID_SESSION"},{status:502});

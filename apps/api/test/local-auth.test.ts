@@ -14,7 +14,7 @@ describe("local email authentication",()=>{
   const inviteCode="I".repeat(43);const inviteHash=createHash("sha256").update(inviteCode).digest("hex");
   const client={query:vi.fn(async(sql:string,params?:unknown[])=>{
    if(sql.includes("SELECT invite_token_hash FROM moderator_invites"))return {rows:[{invite_token_hash:inviteHash}],rowCount:1};
-   if(sql.includes("claim_moderator_invite"))return {rows:[{user_id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",auth_subject:"local:subject",email:"mod@example.com",role:"moderator"}],rowCount:1};
+   if(sql.includes("claim_moderator_invite"))return {rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",auth_subject:"local:subject",email:"mod@example.com",role:"moderator"}],rowCount:1};
    return {rows:[],rowCount:0};
   }),release:vi.fn()};
   const pool={connect:vi.fn().mockResolvedValue(client)} as never;const app=express();app.use(express.json());app.use("/v1/auth",createAuthRouter(pool,createLocalAuthMiddleware(pool)));

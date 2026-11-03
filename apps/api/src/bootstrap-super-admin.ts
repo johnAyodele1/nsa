@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import {fileURLToPath} from "node:url";
-dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 import {randomBytes,randomUUID,scrypt as scryptCallback} from "node:crypto";
 import {promisify} from "node:util";
 import {Pool} from "pg";
+dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 const scrypt=promisify(scryptCallback);
 const databaseUrl=process.env.MIGRATOR_DATABASE_URL;
 const email=process.env.NSA_SUPER_ADMIN_EMAIL?.trim().toLowerCase();

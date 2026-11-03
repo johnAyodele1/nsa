@@ -39,7 +39,8 @@ export async function ingestOneSource(pool:Pool,source:Source,log:WorkerLogger=l
   await pool.query(`UPDATE source_registry SET consecutive_failures=LEAST(consecutive_failures+1,12),
    next_poll_at=now()+make_interval(secs=>LEAST(86400, GREATEST(polling_interval_seconds, 300) * power(2,LEAST(consecutive_failures,8))::integer)),
    poll_lease_until=NULL,last_error=$2 WHERE id=$1`,[source.id,code]);
-  log.warn("Ingestion source failed",{sourceId:source.id,errorCode:code,errorName:error instanceof Error?error.name:"UnknownError"});
+  const safeMessage=error instanceof Error?error.message.replace(/https?:\\/\\/[^\\s]+/gi,"[url]").replace(/[^a-zA-Z0-9 _.:/-]/g," ").slice(0,160):"Unknown ingestion error";
+  log.warn("Ingestion source failed",{sourceId:source.id,errorCode:code,errorName:error instanceof Error?error.name:"UnknownError",errorMessage:safeMessage});
   return 0;
  }
 }

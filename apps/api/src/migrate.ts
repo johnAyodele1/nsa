@@ -1,8 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import {readdir,readFile} from "node:fs/promises";
 import {Pool} from "pg";
 import {fileURLToPath,pathToFileURL} from "node:url";
 
+dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 const migrationsDirectory=fileURLToPath(new URL("../../../database/migrations/",import.meta.url));
 export async function applyMigrations(pool:Pool,directory=migrationsDirectory):Promise<void>{
  const client=await pool.connect();

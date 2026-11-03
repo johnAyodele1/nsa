@@ -50,8 +50,8 @@ This checklist is the source of truth for implementation progress. A checkbox is
 - [x] Commit `pnpm-lock.yaml`; `pnpm install --frozen-lockfile` passes after removing external-auth dependencies.
 - [x] pnpm typecheck passes on the validated PR head.
 - [x] pnpm test passes on the validated PR head, including PostgreSQL 17 integration tests.
-- [x] pnpm build passes on the validated PR head.
-- [ ] Expo dependency compatibility check passes in CI.
+- [x] pnpm build passes on the validated PR head, including Android and iOS Expo exports.
+- [x] Expo dependency compatibility check passes in CI.
 - [ ] Web and mobile device/browser smoke tests pass (native OAuth and Agora require Android/iOS development builds; Expo export alone does not compile native modules).
 - [ ] CI is green on the latest local-auth PR head after the session-expiry test update: typecheck, unit tests, PostgreSQL integration tests and builds.
 

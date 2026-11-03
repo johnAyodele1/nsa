@@ -17,6 +17,7 @@ const derived=await scrypt(password,salt,64) as Buffer;
 const passwordHash="scrypt$16384$8$1$"+salt.toString("base64url")+"$"+derived.toString("base64url");
 const client=await pool.connect();
 try{
+ await client.query("SET ROLE nsa_migrator");
  await client.query("BEGIN");
  await client.query("SELECT pg_advisory_xact_lock(hashtext('nsa-super-admin-bootstrap'))");
  const admins=await client.query("SELECT 1 FROM app_users WHERE role='admin' AND is_active IS TRUE LIMIT 1");

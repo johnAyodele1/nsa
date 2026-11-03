@@ -51,20 +51,25 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   await request(localAuthApp).post("/v1/auth/login").send({email,password}).expect(200);
   await request(localAuthApp).post("/v1/auth/login").send({email,password:"wrong-password-value"}).expect(401);
  });
- it("lets the super admin invite, onboard and revoke a moderator through the API",async()=>{
+ it("requires the one-time invite code to claim an existing email as moderator",async()=>{
+  const email="new-moderator@example.test";
+  const existing=await request(localAuthApp).post("/v1/auth/register").send({email,password:"old-member-password-2026"}).expect(201);
+  const oldToken=existing.body.data.accessToken as string;
   const admin=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash,role) VALUES($1,$2,$3,'admin') RETURNING id",["integration:admin","root@example.test","scrypt-placeholder"]);
   const token="A".repeat(43),tokenHash=createHash("sha256").update(token).digest("hex");
   await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,admin.rows[0].id]);
-  const invitation=await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email:"new-moderator@example.test"}).expect(201);
+  const invitation=await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email}).expect(201);
   const inviteCode=invitation.body.data.inviteCode as string;expect(inviteCode).toMatch(/^[A-Za-z0-9_-]{43}$/);
-  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["new-moderator@example.test"])).rows).toHaveLength(1);
-  await request(localAuthApp).post("/v1/auth/register").send({email:"new-moderator@example.test",password:"moderator-account-password-2026"}).expect(403,{error:"MODERATOR_INVITE_CODE_REQUIRED"});
-  const registered=await request(localAuthApp).post("/v1/auth/register").send({email:"new-moderator@example.test",password:"moderator-account-password-2026",moderatorInviteToken:inviteCode}).expect(201);
-  const moderatorId=registered.body.data.user.id as string;
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",[email])).rows).toHaveLength(1);
+  await request(localAuthApp).post("/v1/auth/register").send({email,password:"new-moderator-password-2026"}).expect(403,{error:"MODERATOR_INVITE_CODE_REQUIRED"});
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email,password:"new-moderator-password-2026",moderatorInviteToken:inviteCode}).expect(201);
+  const moderatorId=registered.body.data.user.id as string;const newToken=registered.body.data.accessToken as string;
   expect(registered.body.data.user.role).toBe("moderator");
-  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["new-moderator@example.test"])).rows).toHaveLength(0);
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",[email])).rows).toHaveLength(0);
   expect((await pool.query("SELECT action FROM user_role_audit WHERE target_user_id=$1",[moderatorId])).rows.map(row=>row.action)).toEqual(["moderator_invited"]);
-  await request(localAuthApp).post("/v1/auth/admin/moderators/revoke").set("authorization","Bearer "+token).send({email:"new-moderator@example.test"}).expect(200);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+oldToken).expect(401);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+newToken).expect(200);
+  await request(localAuthApp).post("/v1/auth/admin/moderators/revoke").set("authorization","Bearer "+token).send({email}).expect(200);
   expect((await pool.query("SELECT role FROM app_users WHERE id=$1",[moderatorId])).rows[0].role).toBe("member");
  });
  it("rejects moderator management without an active admin session",async()=>{

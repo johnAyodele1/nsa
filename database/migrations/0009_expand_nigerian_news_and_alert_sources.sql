@@ -240,7 +240,7 @@ VALUES
     300,
     90,
     'pending'
-  ),
+  )
 ON CONFLICT (feed_url) DO NOTHING;
 
 COMMIT;

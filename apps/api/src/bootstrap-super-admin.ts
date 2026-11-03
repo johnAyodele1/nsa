@@ -11,7 +11,7 @@ if(!email||email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new
 if(!password||password.length<16||password.length>128)throw new Error("NSA_SUPER_ADMIN_PASSWORD must contain 16 to 128 characters");
 const pool=new Pool({connectionString:databaseUrl,max:1,connectionTimeoutMillis:5000,application_name:"nsa-super-admin-bootstrap"});
 const salt=randomBytes(16);
-const derived=await scrypt(password,salt,64,{N:16384,r:8,p:1,maxmem:64*1024*1024}) as Buffer;
+const derived=await scrypt(password,salt,64) as Buffer;
 const passwordHash="scrypt$16384$8$1$"+salt.toString("base64url")+"$"+derived.toString("base64url");
 const client=await pool.connect();
 try{

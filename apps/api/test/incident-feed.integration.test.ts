@@ -4,6 +4,7 @@ import type {RequestHandler} from "express";
 import pg from "pg";
 import request from "supertest";
 import {createApp} from "../src/app.js";
+import {createLocalAuthMiddleware} from "../src/local-auth.js";
 import {applyMigrations} from "../src/migrate.js";
 const {Pool}=pg;
 const databaseUrl=process.env.DATABASE_URL;
@@ -14,6 +15,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  const app=createApp({pool,allowedOrigins:[]});
  const authenticatedApp=createApp({pool,allowedOrigins:[],authMiddleware:reportAuth});
  const moderationApp=createApp({pool,allowedOrigins:[],authMiddleware:moderatorAuth});
+ const localAuthApp=createApp({pool,allowedOrigins:[],authMiddleware:createLocalAuthMiddleware(pool)});
  let sourceRegistryId="";let reportId="";
  beforeAll(async()=>{
   await Promise.all([applyMigrations(pool),applyMigrations(pool)]);await applyMigrations(pool);
@@ -34,6 +36,20 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  it("records every migration once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
   expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql"]);
+ });
+ it("registers, signs in, resolves and revokes local email/password sessions",async()=>{
+  const email="auth-integration@example.test";const password="correct-horse-battery-staple-2026";
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email,password}).expect(201);
+  const firstToken=registered.body.data.accessToken as string;
+  expect(registered.body.data.user).toMatchObject({email,role:"member"});
+  const stored=await pool.query("SELECT password_hash FROM app_users WHERE email=$1",[email]);
+  expect(stored.rows[0].password_hash).toMatch(/^scrypt\\$16384\\$8\\$1\\$/);
+  expect(stored.rows[0].password_hash).not.toBe(password);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+firstToken).expect(200);
+  await request(localAuthApp).post("/v1/auth/logout").set("authorization","Bearer "+firstToken).expect(200);
+  await request(localAuthApp).get("/v1/auth/me").set("authorization","Bearer "+firstToken).expect(401);
+  await request(localAuthApp).post("/v1/auth/login").send({email,password}).expect(200);
+  await request(localAuthApp).post("/v1/auth/login").send({email,password:"wrong-password-value"}).expect(401);
  });
  it("binds moderator role changes to an active super-admin session and consumes email invitations",async()=>{
   const admin=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash,role) VALUES($1,$2,$3,'admin') RETURNING id",["integration:admin","root@example.test","scrypt-placeholder"]);

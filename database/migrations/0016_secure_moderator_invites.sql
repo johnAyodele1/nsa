@@ -25,12 +25,13 @@ END;
 $auth$;
 REVOKE ALL ON FUNCTION consume_moderator_invite_after_registration() FROM PUBLIC;
 CREATE OR REPLACE FUNCTION manage_moderator(p_session_hash char(64),p_email varchar,p_action varchar,p_invite_token_hash char(64)) RETURNS TABLE(email varchar,action varchar,invite_created boolean) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $auth$
-DECLARE v_email varchar(254):=lower(btrim(p_email)); v_target_id uuid; v_actor_id uuid; v_target_role app_role; v_invite_created boolean:=false;
+DECLARE v_email varchar(254):=lower(btrim(p_email)); v_target_id uuid; v_actor_id uuid; v_target_role app_role; v_target_active boolean; v_invite_created boolean:=false;
 BEGIN
  SELECT u.id INTO v_actor_id FROM public.auth_sessions s JOIN public.app_users u ON u.id=s.user_id WHERE s.session_id_hash=p_session_hash AND s.expires_at>now() AND u.role='admin' AND u.is_active IS TRUE;
  IF v_actor_id IS NULL THEN RAISE EXCEPTION 'Active administrator session required' USING ERRCODE='42501'; END IF;
  IF v_email IS NULL OR length(v_email)>254 OR position('@' in v_email)<2 OR position('.' in split_part(v_email,'@',2))<2 THEN RAISE EXCEPTION 'Valid email address required' USING ERRCODE='22023'; END IF;
- SELECT id,role INTO v_target_id,v_target_role FROM public.app_users WHERE lower(app_users.email)=v_email;
+ SELECT id,role,is_active INTO v_target_id,v_target_role,v_target_active FROM public.app_users WHERE lower(app_users.email)=v_email;
+ IF v_target_id IS NOT NULL AND v_target_active IS NOT TRUE THEN RAISE EXCEPTION 'Disabled accounts cannot be promoted' USING ERRCODE='42501'; END IF;
  IF p_action='invite' THEN
   IF v_target_role='admin' THEN RAISE EXCEPTION 'Super-admin accounts cannot be changed to moderators' USING ERRCODE='42501'; END IF;
   IF v_target_id IS NULL THEN

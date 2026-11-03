@@ -51,24 +51,26 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
   await request(localAuthApp).post("/v1/auth/login").send({email,password}).expect(200);
   await request(localAuthApp).post("/v1/auth/login").send({email,password:"wrong-password-value"}).expect(401);
  });
- it("binds moderator role changes to an active super-admin session and consumes email invitations",async()=>{
+ it("lets the super admin invite, onboard and revoke a moderator through the API",async()=>{
   const admin=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash,role) VALUES($1,$2,$3,'admin') RETURNING id",["integration:admin","root@example.test","scrypt-placeholder"]);
-  const adminId=admin.rows[0].id as string;const tokenHash=createHash("sha256").update("admin-session-token").digest("hex");
-  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,adminId]);
-  await pool.query("SELECT * FROM manage_moderator($1,$2,'invite')",[tokenHash,"new-moderator@example.test"]);
+  const token="A".repeat(43),tokenHash=createHash("sha256").update(token).digest("hex");
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,admin.rows[0].id]);
+  await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email:"new-moderator@example.test"}).expect(201);
   expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["new-moderator@example.test"])).rows).toHaveLength(1);
-  const created=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash) VALUES($1,$2,$3) RETURNING id,role",["integration:new-moderator","new-moderator@example.test","scrypt-placeholder"]);
-  expect(created.rows[0].role).toBe("moderator");
+  const registered=await request(localAuthApp).post("/v1/auth/register").send({email:"new-moderator@example.test",password:"moderator-account-password-2026"}).expect(201);
+  const moderatorId=registered.body.data.user.id as string;
+  expect(registered.body.data.user.role).toBe("moderator");
   expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["new-moderator@example.test"])).rows).toHaveLength(0);
-  expect((await pool.query("SELECT action FROM user_role_audit WHERE target_user_id=$1",[created.rows[0].id])).rows.map(row=>row.action)).toEqual(["moderator_invited"]);
-  await pool.query("SELECT * FROM manage_moderator($1,$2,'revoke')",[tokenHash,"new-moderator@example.test"]);
-  expect((await pool.query("SELECT role FROM app_users WHERE id=$1",[created.rows[0].id])).rows[0].role).toBe("member");
+  expect((await pool.query("SELECT action FROM user_role_audit WHERE target_user_id=$1",[moderatorId])).rows.map(row=>row.action)).toEqual(["moderator_invited"]);
+  await request(localAuthApp).post("/v1/auth/admin/moderators/revoke").set("authorization","Bearer "+token).send({email:"new-moderator@example.test"}).expect(200);
+  expect((await pool.query("SELECT role FROM app_users WHERE id=$1",[moderatorId])).rows[0].role).toBe("member");
  });
  it("rejects moderator management without an active admin session",async()=>{
   const member=await pool.query("INSERT INTO app_users(auth_subject,email,password_hash) VALUES($1,$2,$3) RETURNING id",["integration:member","member@example.test","scrypt-placeholder"]);
-  const tokenHash=createHash("sha256").update("member-session-token").digest("hex");
+  const token="B".repeat(43),tokenHash=createHash("sha256").update(token).digest("hex");
   await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[tokenHash,member.rows[0].id]);
-  await expect(pool.query("SELECT * FROM manage_moderator($1,$2,'invite')",[tokenHash,"bad-invite@example.test"])).rejects.toMatchObject({code:"42501"});
+  await request(localAuthApp).post("/v1/auth/admin/moderators").set("authorization","Bearer "+token).send({email:"bad-invite@example.test"}).expect(403);
+  expect((await pool.query("SELECT email FROM moderator_invites WHERE email=$1",["bad-invite@example.test"])).rows).toHaveLength(0);
  });
  it("serves the official agency directory with source-linked contact details",async()=>{
   const response=await request(app).get("/v1/agencies").expect(200);

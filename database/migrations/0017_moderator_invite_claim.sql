@@ -45,7 +45,7 @@ BEGIN
   DELETE FROM public.auth_sessions WHERE auth_sessions.user_id=v_user_id;
   INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_user_id,v_actor_id,'moderator_invited');
  ELSE
-  INSERT INTO public.app_users(auth_subject,email,password_hash,role) VALUES(p_auth_subject,v_email,p_password_hash,'moderator') RETURNING id,app_users.auth_subject,app_users.role INTO v_user_id,v_auth_subject,v_role;
+  INSERT INTO public.app_users(auth_subject,email,password_hash,role) VALUES(p_auth_subject,v_email,p_password_hash,'moderator') RETURNING app_users.id,app_users.auth_subject,app_users.role INTO v_user_id,v_auth_subject,v_role;
   INSERT INTO public.user_role_audit(target_user_id,actor_user_id,action) VALUES(v_user_id,v_actor_id,'moderator_invited');
  END IF;
  DELETE FROM public.moderator_invites WHERE moderator_invites.email=v_email AND invite_token_hash=p_invite_token_hash;

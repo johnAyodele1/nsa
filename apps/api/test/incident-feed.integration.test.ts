@@ -9,19 +9,20 @@ import {applyMigrations} from "../src/migrate.js";
 const {Pool}=pg;
 const databaseUrl=process.env.DATABASE_URL;
 const reportAuth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"integration|member"};next();};
-const moderatorAuth:RequestHandler=(_req,res,next)=>{res.locals.auth={subject:"integration|moderator"};next();};
 describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integration",()=>{
  const pool=new Pool({connectionString:databaseUrl});
  const app=createApp({pool,allowedOrigins:[]});
  const authenticatedApp=createApp({pool,allowedOrigins:[],authMiddleware:reportAuth});
- const moderationApp=createApp({pool,allowedOrigins:[],authMiddleware:moderatorAuth});
  const localAuthApp=createApp({pool,allowedOrigins:[],authMiddleware:createLocalAuthMiddleware(pool)});
+ const moderationApp=localAuthApp;
+ const moderatorToken="M".repeat(43);
  let sourceRegistryId="";let reportId="";
  beforeAll(async()=>{
   await Promise.all([applyMigrations(pool),applyMigrations(pool)]);await applyMigrations(pool);
   await pool.query("TRUNCATE report_moderation_audit,incident_reports,app_users,moderation_audit,incident_sources,incidents,source_registry RESTART IDENTITY CASCADE");
   const moderatorId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   await pool.query("INSERT INTO app_users(id,auth_subject,role) VALUES($1,$2,'moderator')",[moderatorId,"integration|moderator"]);
+  await pool.query("INSERT INTO auth_sessions(session_id_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 hour')",[createHash("sha256").update(moderatorToken).digest("hex"),moderatorId]);
   const source=await pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url,licence_name,attribution_text,is_official,robots_checked_at,robots_allowed,terms_reviewed_at,approval_status,approved_by,approved_at) VALUES($1,$2,$3,$4,'api',$5,$6,$7,true,now(),true,now(),'approved',$8,now()) RETURNING id",["Lagos Emergency Management Agency","Lagos Emergency Management Agency","https://agency.gov.ng","https://agency.gov.ng/public-notices","https://agency.gov.ng/terms","Public notices","Source attribution required",moderatorId]);
   sourceRegistryId=source.rows[0].id;
   const insert=`INSERT INTO incidents(id,title,summary,category,state,locality,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`;
@@ -127,12 +128,12 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  });
  it("allows only moderators to see the review queue and hides reporter identity",async()=>{
   await request(authenticatedApp).get("/v1/moderation/reports").expect(403);
-  const response=await request(moderationApp).get("/v1/moderation/reports").expect(200);expect(response.body.data.some((item:{id:string})=>item.id===reportId)).toBe(true);expect(JSON.stringify(response.body)).not.toContain("integration|member");
-  const sources=await request(moderationApp).get("/v1/moderation/sources").expect(200);expect(sources.body.data).toHaveLength(1);expect(sources.body.data[0]).toMatchObject({publisherName:"Lagos Emergency Management Agency",isOfficial:true});
+  const response=await request(moderationApp).get("/v1/moderation/reports").set("authorization","Bearer "+moderatorToken).expect(200);expect(response.body.data.some((item:{id:string})=>item.id===reportId)).toBe(true);expect(JSON.stringify(response.body)).not.toContain("integration|member");
+  const sources=await request(moderationApp).get("/v1/moderation/sources").set("authorization","Bearer "+moderatorToken).expect(200);expect(sources.body.data).toHaveLength(1);expect(sources.body.data[0]).toMatchObject({publisherName:"Lagos Emergency Management Agency",isOfficial:true});
   await request(authenticatedApp).get("/v1/moderation/sources").expect(403);
  });
  it("requires approved official evidence before publishing a report",async()=>{
-  const response=await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).send({decision:"approve",reason:"Confirmed against the agency-owned public notice.",verificationStatus:"officially_confirmed",sources:[{sourceRegistryId,sourceUrl:"https://agency.gov.ng/notices/123"}]}).expect(200);
+  const response=await request(moderationApp).post(`/v1/moderation/reports/${reportId}/decision`).set("authorization","Bearer "+moderatorToken).send({decision:"approve",reason:"Confirmed against the agency-owned public notice.",verificationStatus:"officially_confirmed",sources:[{sourceRegistryId,sourceUrl:"https://agency.gov.ng/notices/123"}]}).expect(200);
   const incidentId=response.body.data.incidentId;
   const stored=await pool.query("SELECT r.status,r.incident_id,i.status AS incident_status,i.verification_status FROM incident_reports r JOIN incidents i ON i.id=r.incident_id WHERE r.id=$1",[reportId]);
   expect(stored.rows[0]).toMatchObject({status:"approved",incident_status:"published",verification_status:"officially_confirmed"});expect(stored.rows[0].incident_id).toBe(incidentId);

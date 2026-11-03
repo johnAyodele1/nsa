@@ -3,9 +3,9 @@
 Nigeria-focused public-safety information platform. Web, Android and iOS clients share one Express API, PostgreSQL database and Zod contracts.
 
 ## Workspace
-- `apps/web`: responsive Next.js incident feed, official agency directory, OIDC-backed report form (`/report`) and moderator console (`/moderation`) and Agora live-video interface (`/live`).
-- `apps/mobile`: Expo React Native incident feed, official agency directory and OIDC-authenticated report submission and Agora native live-video interface for Android and iOS.
-- `apps/api`: Express 5 API, OIDC authentication, report intake, moderation endpoints and PostgreSQL access.
+- `apps/web`: responsive Next.js incident feed, official agency directory, email/password report form (`/report`) and moderator console (`/moderation`) and Agora live-video interface (`/live`).
+- `apps/mobile`: Expo React Native incident feed, official agency directory and email/password-authenticated report submission and Agora native live-video interface for Android and iOS.
+- `apps/api`: Express 5 API, local email/password authentication, report intake, moderation endpoints and PostgreSQL access.
 - `packages/contracts`: shared Zod request/response contracts.
 - `database/migrations`: PostgreSQL schema, approved-source registry, reports, moderation audit and source-linked agency contacts.
 - `docs/BUILD_CHECKLIST.md`: cross-checked delivery checklist and remaining work.
@@ -45,22 +45,27 @@ GRANT nsa_migrator TO nsa_migrator_login;
 GRANT USAGE, CREATE ON SCHEMA public TO nsa_migrator;
 ```
 
-For the web BFF, set `WEB_PUBLIC_ORIGIN`, `API_INTERNAL_URL`, and generate `WEB_SESSION_ENCRYPTION_KEY` with `openssl rand -base64 32`. The browser only receives an HttpOnly opaque session cookie and a CSRF cookie; it never receives the provider access token. Configure the OIDC client callback URI as `https://your-web-host/api/auth/callback` and register the matching logout/allowed-origin settings at the identity provider.
+For the web BFF, set `WEB_PUBLIC_ORIGIN`, `API_INTERNAL_URL`, `WEB_SESSION_DATABASE_URL` and generate `WEB_SESSION_ENCRYPTION_KEY` with `openssl rand -base64 32`. Browser sessions use HttpOnly opaque cookies, encrypted server-side bearer tokens and same-origin CSRF protection.
 
-Report submission and moderation are disabled until OIDC is configured. Set the server values and browser client values in `.env`:
-- `OIDC_ISSUER_URL`: exact issuer URL from your identity provider.
-- `OIDC_JWKS_URL`: HTTPS JSON Web Key Set endpoint.
-- `OIDC_AUDIENCE`: API audience expected in access tokens.
-- `NEXT_PUBLIC_OIDC_ISSUER_URL`: same HTTPS issuer for browser sign-in.
-- `NEXT_PUBLIC_OIDC_CLIENT_ID`: public OIDC client ID configured for authorization-code + PKCE.
-- `NEXT_PUBLIC_OIDC_AUDIENCE`: same API audience sent by the web client.
-- `EXPO_PUBLIC_OIDC_ISSUER_URL`: HTTPS issuer used by the native authorization-code + PKCE flow.
-- `EXPO_PUBLIC_OIDC_CLIENT_ID`: public native OIDC client ID with `nsa://auth/callback` registered as a redirect URI.
-- `EXPO_PUBLIC_OIDC_AUDIENCE`: API audience requested by the native client.
+### First super-admin account
+After applying migrations, configure these values in the deployment secret manager or local `.env` file:
 
-Native sign-in redirects to `nsa://auth/callback`. Register that exact redirect URI with the identity provider. Because the app uses a custom native URL scheme, test OAuth on a development build or production build, not Expo Go. Build and install a development client before testing sign-in on a physical Android or iOS device.
+- `NSA_SUPER_ADMIN_EMAIL`: email address for the first super admin.
+- `NSA_SUPER_ADMIN_PASSWORD`: one-time bootstrap password (minimum 16 characters).
 
-The API verifies JWT signatures using the remote JWKS, validates issuer/audience and accepts RS256 or ES256 only. Do not put a client secret or signing private key in this repository. The identity provider owns sign-in and account lifecycle. New authenticated users receive the `member` role; moderator/admin roles must be provisioned by an authorized operator directly in the database. Never expose role assignment to public clients.
+Run the bootstrap command exactly once:
+
+```sh
+pnpm --filter @nsa/api admin:bootstrap
+```
+
+The command uses `MIGRATOR_DATABASE_URL`, refuses to overwrite an existing administrator, hashes the password with scrypt and never prints the password. Remove the bootstrap password from the deployment environment after successful creation. Do not run this command on every API startup.
+
+All other users register through `/login` with an email address and password (minimum 12 characters). Passwords are scrypt-hashed; the API issues random, revocable seven-day sessions and stores only SHA-256 session-token hashes. The browser stores its API session token encrypted server-side; the mobile app stores its token in iOS Keychain / Android Keystore via SecureStore.
+
+The super admin opens `/admin` and adds moderator email addresses. If the email already belongs to an active account, moderator access is granted immediately. Otherwise, the email is stored as a pending moderator invitation; when that person registers with the same email, the account is created as a moderator. The super admin can revoke moderator access from the same page. Role assignment is not exposed to ordinary users; the database function checks the acting administrator and records role changes.
+
+No external identity provider, OIDC issuer, client ID, JWKS endpoint or third-party login configuration is required.
 
 ## API surface
 - `GET /v1/incidents`: published incidents only; supports Nigeria state/category filters and stable cursor pagination.
@@ -75,7 +80,7 @@ The API verifies JWT signatures using the remote JWKS, validates issuer/audience
 - `GET /v1/moderation/sources`: moderator/admin-only approved evidence sources.
 - `POST /v1/moderation/reports/:reportId/decision`: moderator/admin-only approve/reject. Approval requires reviewed source-registry entries. Corroborated reports need at least two distinct publishers; official confirmation needs an official source entry.
 
-The web report form is available at `/report`; the native report form is available at `/report`; the moderator console is at `/moderation`. The web client uses a Next.js BFF with authorization-code + PKCE, state/nonce verification, encrypted server-side access-token storage, opaque HttpOnly session cookies and CSRF validation. Browser JavaScript never receives the OIDC access token. Native access tokens are stored with iOS Keychain / Android Keystore via SecureStore. Source registry records must be provisioned by an authorized operator. RSS/Atom/JSON Feed adapters stage items for human moderation; no automatic publication is enabled, and the feed remains empty until approved sources exist and the worker is running.
+The web report form is available at `/report`; the native report form is available at `/report`; the moderator console is at `/moderation`. The web client uses a Next.js BFF with encrypted server-side session-token storage, opaque HttpOnly session cookies and CSRF validation. Browser JavaScript never receives the API bearer token. Native session tokens are stored with iOS Keychain / Android Keystore via SecureStore. Source registry records must be provisioned by an authorized operator. RSS/Atom/JSON Feed adapters stage items for human moderation; no automatic publication is enabled, and the feed remains empty until approved sources exist and the worker is running.
 
 ## Verified engineering baseline
 - Express 5 with injectable app, Helmet, explicit CORS allowlist, bounded JSON bodies and API rate limiting.
@@ -84,7 +89,7 @@ The web report form is available at `/report`; the native report form is availab
 - Advisory-locked, transactional, idempotent SQL migration runner.
 - Database constraints enforce Nigerian states, reviewed source approval and safe publication prerequisites.
 - Authenticated report intake, per-account rate limiting, private report status, role-protected moderation and audit records.
-- OIDC verification uses HTTPS JWKS and explicit issuer/audience/algorithm checks.
+- Email/password authentication uses scrypt password hashes, random revocable sessions, rate-limited login endpoints and server-side role enforcement.
 - CI runs TypeScript checks, unit tests, PostgreSQL integration tests against an empty PostgreSQL 17 service, and workspace builds.
 
 ## Agora live-video backend
@@ -99,7 +104,7 @@ The web client uses `agora-rtc-sdk-ng`; Android/iOS use `react-native-agora`. Bo
 
 ## Privacy API
 
-Authenticated users can submit privacy-rights requests and request local account erasure. Erasure disables local access, writes a tombstone to prevent account recreation and ends/cancels the user's active or pending broadcasts. Identity-provider account deletion remains a manual provider-side operation; a successful local request is not represented as full external deletion.
+Authenticated users can submit privacy-rights requests and request local account erasure. Erasure disables local access, writes a tombstone to prevent account recreation and ends/cancels the user's active or pending broadcasts. Account erasure disables local access, revokes sessions and removes local authentication credentials; a successful request is not represented as deletion of copies held by third parties.
 
 ## Safety and launch gates
 NSA is independent, not a government agency or emergency dispatch service. SOS and responder dispatch are not implemented. Agora RTC server endpoints issue short-lived tokens only for approved, active streams; live video remains unavailable until Agora credentials, audience-token enablement, moderation staffing, retention policy, bandwidth limits and device testing are in place. No fabricated incidents, agency contact details or government affiliation claims are seeded. Agency directory entries are source-linked to official agency-owned pages and scheduled for review. Reports are not public until moderator review and source verification. Never publish reporter identity, phone number, home address or precise live location. Ingestion must use approved public feeds/APIs and respect terms, robots directives, rate limits, copyright and privacy. No access-control, login, paywall or CAPTCHA bypass. Media requires rights clearance, malware scanning, metadata stripping and moderation.

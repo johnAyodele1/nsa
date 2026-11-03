@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
 import {currentWebSession,verifyCsrf} from "../../../../server/session";
-import {isAllowedProxyRoute,isPublicProxyRoute} from "../../../../server/proxy-policy";
+import {allowedGetQueryKeys,isAllowedProxyRoute,isPublicProxyRoute} from "../../../../server/proxy-policy";
 type Context={params:Promise<{path:string[]}>};
 async function handle(request:NextRequest,context:Context){
  try{
@@ -15,8 +15,7 @@ async function handle(request:NextRequest,context:Context){
   if(baseUrl.username||baseUrl.password||!["http:","https:"].includes(baseUrl.protocol))return NextResponse.json({error:"INVALID_API_CONFIGURATION"},{status:503});
   const target=new URL(apiPath,base.endsWith("/")?base:base+"/");
   if(request.method==="GET"){
-   const queryKeys=apiPath==="/v1/incidents"?["limit","cursor","state","category","priority"]:apiPath==="/v1/emergency-contacts"?["state"]:["limit","cursor"];
-   for(const key of queryKeys){const value=request.nextUrl.searchParams.get(key);if(value)target.searchParams.set(key,value);}
+   for(const key of allowedGetQueryKeys(apiPath)){const value=request.nextUrl.searchParams.get(key);if(value)target.searchParams.set(key,value);}
   }
   const headers=new Headers({accept:"application/json"});if(session)headers.set("authorization","Bearer "+session.accessToken);let body:string|undefined;
   if(request.method==="POST"){const type=request.headers.get("content-type")??"";if(!type.toLowerCase().startsWith("application/json"))return NextResponse.json({error:"JSON_REQUIRED"},{status:415});const length=Number(request.headers.get("content-length")??0);if(length>65536)return NextResponse.json({error:"BODY_TOO_LARGE"},{status:413});body=await request.text();if(Buffer.byteLength(body,"utf8")>65536)return NextResponse.json({error:"BODY_TOO_LARGE"},{status:413});headers.set("content-type","application/json");}

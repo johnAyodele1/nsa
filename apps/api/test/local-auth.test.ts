@@ -27,6 +27,11 @@ describe("local email authentication",()=>{
   expect(claim?.[1]).toHaveLength(4);
   expect(client.release).toHaveBeenCalledOnce();
  });
+ it("rejects expired or revoked bearer sessions",async()=>{
+  const query=vi.fn().mockResolvedValue({rows:[],rowCount:0});const pool={query} as never;const app=express();app.use(express.json());app.use("/v1/auth",createAuthRouter(pool,createLocalAuthMiddleware(pool)));
+  await request(app).get("/v1/auth/me").set("authorization","Bearer "+"E".repeat(43)).expect(401);
+  expect(query).toHaveBeenCalledOnce();
+ });
  it("authenticates only active users with a stored opaque session hash",async()=>{
   const token="A".repeat(43);const query=vi.fn()
    .mockResolvedValueOnce({rows:[{id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",auth_subject:"local:subject",role:"member",is_active:true}],rowCount:1})

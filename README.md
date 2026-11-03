@@ -45,7 +45,7 @@ GRANT nsa_migrator TO nsa_migrator_login;
 GRANT USAGE, CREATE ON SCHEMA public TO nsa_migrator;
 ```
 
-For the web BFF, set `WEB_PUBLIC_ORIGIN`, `API_INTERNAL_URL`, `WEB_SESSION_DATABASE_URL` and generate `WEB_SESSION_ENCRYPTION_KEY` with `openssl rand -base64 32`. Browser sessions use HttpOnly opaque cookies, encrypted server-side bearer tokens and same-origin CSRF protection.
+For local development, the API, worker, web session store, migrations and bootstrap command all fall back to the single `DATABASE_URL`. In production, set the service-specific URL variables to distinct least-privilege users on that same database. Never point them at separate databases. For the web BFF, set `WEB_PUBLIC_ORIGIN`, `API_INTERNAL_URL`, optionally override `WEB_SESSION_DATABASE_URL` with its restricted user on the same database, and generate `WEB_SESSION_ENCRYPTION_KEY` with `openssl rand -base64 32`. Browser sessions use HttpOnly opaque cookies, encrypted server-side bearer tokens and same-origin CSRF protection.
 
 ### First super-admin account
 After applying migrations, configure these values in the deployment secret manager or local `.env` file:

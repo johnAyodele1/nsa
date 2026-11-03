@@ -30,7 +30,7 @@ CREATE TRIGGER app_users_assign_invited_moderator
 REVOKE INSERT ON app_users FROM nsa_app;
 GRANT INSERT(auth_subject,email,password_hash) ON app_users TO nsa_app;
 
-CREATE OR REPLACE FUNCTION manage_moderator(p_session_hash char(64),p_email varchar,p_action varchar) RETURNS TABLE(email varchar,action varchar) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $
+CREATE OR REPLACE FUNCTION manage_moderator(p_session_hash char(64),p_email varchar,p_action varchar) RETURNS TABLE(email varchar,action varchar) LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $auth$
 DECLARE v_email varchar(254):=lower(btrim(p_email)); v_target_id uuid; v_actor_id uuid;
 BEGIN
  SELECT u.id INTO v_actor_id FROM public.auth_sessions s JOIN public.app_users u ON u.id=s.user_id WHERE s.session_id_hash=p_session_hash AND s.expires_at>now() AND u.role='admin' AND u.is_active IS TRUE;

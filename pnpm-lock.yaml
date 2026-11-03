@@ -133,9 +133,6 @@ importers:
       agora-rtc-sdk-ng:
         specifier: ^4.24.9
         version: 4.24.9
-      jose:
-        specifier: ^6.1.3
-        version: 6.2.15
       next:
         specifier: 15.5.28
         version: 15.5.28(babel-plugin-react-compiler@1.0.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)

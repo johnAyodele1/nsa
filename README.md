@@ -22,7 +22,7 @@ pnpm --filter @nsa/api db:migrate
 pnpm dev:api
 ```
 
-In separate terminals run `pnpm dev:web` and `pnpm dev:mobile`. For a physical phone, set `EXPO_PUBLIC_API_URL` to your computer's LAN IP, not localhost.
+In separate terminals run `pnpm dev:web` and `pnpm dev:mobile`. For a physical phone, set `EXPO_PUBLIC_API_URL` to your computer's LAN IP, not localhost. Optional service-specific database URL variables may be left empty locally; an empty or whitespace-only override falls back to `DATABASE_URL`.
 
 ### Authentication setup
 Before the first migration, provision separate login roles with a database administrator. Create the NOLOGIN group roles `nsa_app`, `nsa_worker`, `nsa_web`, and `nsa_migrator`; create distinct LOGIN users for the API, worker, web session store and migration runner; grant each login membership in only its matching group role. Grant the migration login `USAGE, CREATE` on schema `public`. The SQL migrations also create the group roles if they do not already exist. Keep each connection string in the deployment secret manager. The migration runner must connect as the dedicated migration login, not as the API login or a superuser. `DATABASE_URL` is reserved for local/CI PostgreSQL integration tests.
@@ -56,10 +56,10 @@ After applying migrations, configure these values in the deployment secret manag
 Run the bootstrap command exactly once:
 
 ```sh
-pnpm --filter @nsa/api admin:bootstrap
+pnpm admin:bootstrap
 ```
 
-The command uses `MIGRATOR_DATABASE_URL`, refuses to overwrite an existing administrator, hashes the password with scrypt and never prints the password. Remove the bootstrap password from the deployment environment after successful creation. Do not run this command on every API startup.
+The root `pnpm admin:bootstrap` command runs the API bootstrap task. It uses `MIGRATOR_DATABASE_URL` when non-empty, otherwise falls back to `DATABASE_URL`; it refuses to overwrite an existing administrator, hashes the password with scrypt and never prints the password. Remove the bootstrap password from the deployment environment after successful creation. Do not run this command on every API startup. The resulting `admin` account is also authorized for all moderator operations: sign in at `/login`, then open `/moderation` (or `/admin` to invite other moderators). You do not need to create a second moderator account for the super admin.
 
 All other users register through `/login` with an email address and password (minimum 12 characters). Passwords are scrypt-hashed; the API issues random, revocable seven-day sessions and stores only SHA-256 session-token hashes. The browser stores its API session token encrypted server-side; the mobile app stores its token in iOS Keychain / Android Keystore via SecureStore.
 

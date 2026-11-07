@@ -92,7 +92,7 @@ export default function SourceRegistryPage(){
       <div className="mod-report-meta"><span>{item.approvalStatus}</span><span>{item.sourceKind.toUpperCase()}</span><span>{item.isOfficial?"Official source":"Publisher"}</span><span>Poll every {Math.round(item.pollingIntervalSeconds/60)} min</span></div>
       <h3>{item.displayName}</h3><p className="mod-muted">Publisher: {item.publisherName} · Retention: {item.retentionDays} days</p>
       <div className="source-links"><a href={item.canonicalUrl} target="_blank" rel="noreferrer">Publisher website ↗</a><a href={item.feedUrl} target="_blank" rel="noreferrer">Feed URL ↗</a><a href={robotsUrl} target="_blank" rel="noreferrer">robots.txt ↗</a>{item.termsUrl&&<a href={item.termsUrl} target="_blank" rel="noreferrer">Terms of use ↗</a>}</div>
-      {!item.termsUrl&&item.approvalStatus!=="approved"&&<p className="mod-error" role="note">No terms-of-use URL is registered. This source cannot be approved until its terms URL is added and reviewed.</p>}
+      {!item.termsUrl&&<p className="mod-error" role="note">{item.approvalStatus==="approved"?"This legacy approval has no terms URL. The worker will not poll this source until a terms URL is registered and the source is reviewed again.":"No terms-of-use URL is registered. This source cannot be approved until its terms URL is added and reviewed."}</p>}
       <p className="mod-muted">Licence: {item.licenceName??"Not specified"}<br/>Attribution: {item.attributionText??"No attribution guidance supplied"}</p>
       <p className="mod-muted">Recorded robots result: {item.robotsCheckedAt?(item.robotsAllowed===true?"Allowed":item.robotsAllowed===false?"Disallowed":"Unknown"):"Not checked"} · Terms review: {item.termsReviewedAt?new Date(item.termsReviewedAt).toLocaleString("en-NG"):"Not reviewed"}</p>
       {item.approvalStatus!=="approved"&&<>
@@ -111,7 +111,7 @@ export default function SourceRegistryPage(){
         <button className="mod-approve" disabled={saving===item.id||review.robotsResult!=="allowed"||!review.termsReviewed||!item.termsUrl||review.reason.trim().length<10} onClick={()=>void decide(item,"approve")}>{saving===item.id?"Saving…":"Approve for ingestion"}</button>
        </div>
       </>}
-      {item.approvalStatus==="approved"&&<p className="mod-notice">Approved {item.approvedAt?new Date(item.approvedAt).toLocaleString("en-NG"):""} · Worker may poll this feed when its next poll is due.</p>}
+      {item.approvalStatus==="approved"&&item.termsUrl&&<p className="mod-notice">Approved {item.approvedAt?new Date(item.approvedAt).toLocaleString("en-NG"):""} · Worker may poll this feed when its next poll is due.</p>}
      </article>;
     })}
    </section>

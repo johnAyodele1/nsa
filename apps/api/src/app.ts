@@ -80,7 +80,7 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
  app.get("/v1/moderation/sources",authenticate,requireModerator(pool),async(_req,res,next)=>{
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   try{
-   const result=await pool.query("SELECT id,publisher_name,display_name,canonical_url,is_official FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND robots_checked_at IS NOT NULL AND terms_reviewed_at IS NOT NULL ORDER BY is_official DESC,publisher_name ASC LIMIT 100");
+   const result=await pool.query("SELECT id,publisher_name,display_name,canonical_url,is_official FROM source_registry WHERE approval_status='approved' AND robots_allowed IS TRUE AND robots_checked_at IS NOT NULL AND terms_reviewed_at IS NOT NULL AND terms_url IS NOT NULL ORDER BY is_official DESC,publisher_name ASC LIMIT 100");
    const data=result.rows.map(row=>({id:row.id,publisherName:row.publisher_name,displayName:row.display_name,canonicalUrl:row.canonical_url,isOfficial:row.is_official}));
    return res.status(200).json(moderationSourceListResponseSchema.parse({data}));
   }catch(error){return next(error);}

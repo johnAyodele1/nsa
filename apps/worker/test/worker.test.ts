@@ -1,7 +1,7 @@
 import {afterEach,describe,expect,it,vi} from "vitest";
 import type {Pool} from "pg";
 import {fetchPublicFeed} from "../src/http.js";
-import {ingestOneSource,type WorkerLogger} from "../src/worker.js";
+import {ingestOneSource,runIngestionCycle,type WorkerLogger} from "../src/worker.js";
 
 vi.mock("../src/http.js",()=>({fetchPublicFeed:vi.fn()}));
 
@@ -28,6 +28,17 @@ const logger:WorkerLogger={info:vi.fn(),warn:vi.fn(),error:vi.fn()};
 afterEach(()=>{vi.clearAllMocks();});
 
 describe("source ingestion worker",()=>{
+ it("claims only sources with an explicit positive robots and terms review and a terms URL",async()=>{
+  const {pool,query}=makePool();
+  await expect(runIngestionCycle(pool,logger)).resolves.toBe(0);
+  const claim=query.mock.calls.find(([sql])=>sql.includes("WITH candidate AS"));
+  expect(claim?.[0]).toContain("approval_status='approved'");
+  expect(claim?.[0]).toContain("robots_allowed IS TRUE");
+  expect(claim?.[0]).toContain("robots_checked_at IS NOT NULL");
+  expect(claim?.[0]).toContain("terms_reviewed_at IS NOT NULL");
+  expect(claim?.[0]).toContain("terms_url IS NOT NULL");
+ });
+
  it("stages feed items without publishing incidents",async()=>{
   vi.mocked(fetchPublicFeed).mockResolvedValue({status:200,body:feedBody,etag:"etag-1",lastModified:null,contentType:"application/rss+xml"});
   const {pool,query}=makePool(1);

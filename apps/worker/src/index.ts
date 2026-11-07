@@ -1,7 +1,7 @@
 import "dotenv/config";
 import {Pool} from "pg";
 import {runIngestionCycle} from "./worker.js";
-const connectionString=process.env.WORKER_DATABASE_URL??process.env.DATABASE_URL;
+const connectionString=process.env.WORKER_DATABASE_URL?.trim()||process.env.DATABASE_URL?.trim();
 if(!connectionString)throw new Error("WORKER_DATABASE_URL or DATABASE_URL is required; point it at the same NSA PostgreSQL database as the API.");
 const pool=new Pool({connectionString,max:2,connectionTimeoutMillis:5000,idleTimeoutMillis:30000,statement_timeout:15000,application_name:"nsa-ingestion-worker"});
 let closing=false;let running=false;

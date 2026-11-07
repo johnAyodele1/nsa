@@ -5,7 +5,7 @@ import {promisify} from "node:util";
 import {Pool} from "pg";
 dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 const scrypt=promisify(scryptCallback);
-const databaseUrl=process.env.MIGRATOR_DATABASE_URL??process.env.DATABASE_URL;
+const databaseUrl=process.env.MIGRATOR_DATABASE_URL?.trim()||process.env.DATABASE_URL?.trim();
 const email=process.env.NSA_SUPER_ADMIN_EMAIL?.trim().toLowerCase();
 const password=process.env.NSA_SUPER_ADMIN_PASSWORD;
 if(!databaseUrl)throw new Error("MIGRATOR_DATABASE_URL or DATABASE_URL is required for the one-time super-admin bootstrap");

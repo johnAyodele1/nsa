@@ -6,7 +6,7 @@ import {createLocalAuthMiddleware} from "./local-auth.js";
 dotenv.config({path:fileURLToPath(new URL("../../../.env",import.meta.url))});
 const port=Number(process.env.API_PORT??4000);
 if(!Number.isInteger(port)||port<1||port>65535)throw new Error("API_PORT must be a valid TCP port");
-const apiDatabaseUrl=process.env.API_DATABASE_URL??process.env.DATABASE_URL;if(!apiDatabaseUrl)throw new Error("API_DATABASE_URL or DATABASE_URL is required");
+const apiDatabaseUrl=process.env.API_DATABASE_URL?.trim()||process.env.DATABASE_URL?.trim();if(!apiDatabaseUrl)throw new Error("API_DATABASE_URL or DATABASE_URL is required");
 const pool=new Pool({connectionString:apiDatabaseUrl,max:Number(process.env.DATABASE_POOL_MAX??10),idleTimeoutMillis:30000,connectionTimeoutMillis:5000,statement_timeout:10000,application_name:"nsa-api"});
 const authMiddleware=createLocalAuthMiddleware(pool);
 const agoraAppId=process.env.AGORA_APP_ID;const agoraAppCertificate=process.env.AGORA_APP_CERTIFICATE;

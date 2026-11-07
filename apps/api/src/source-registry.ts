@@ -4,7 +4,7 @@ import {z} from "zod";
 
 const decisionSchema=z.object({
  decision:z.enum(["approve","reject"]),
- robotsAllowed:z.boolean(),
+ robotsResult:z.enum(["not_checked","allowed","disallowed"]),
  termsReviewed:z.boolean(),
  reason:z.string().trim().min(10).max(1000)
 }).strict();
@@ -42,34 +42,46 @@ export function createSourceRegistryRouter(pool:Pool|null,authenticate:RequestHa
   const parsed=decisionSchema.safeParse(req.body);
   if(!parsed.success)return res.status(400).json({error:"INVALID_DECISION",details:parsed.error.flatten()});
   const decision=parsed.data;
-  if(decision.decision==="approve"&&(!decision.robotsAllowed||!decision.termsReviewed))
+  if(decision.decision==="approve"&&(decision.robotsResult!=="allowed"||!decision.termsReviewed))
    return res.status(422).json({error:"ROBOTS_AND_TERMS_REVIEW_REQUIRED"});
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
-  const moderator=res.locals.moderator as {id:string}|undefined;
-  if(!moderator)return res.status(403).json({error:"FORBIDDEN"});
+  const moderator=res.locals.moderator as {id?:string}|undefined;
+  if(!moderator?.id||!z.string().uuid().safeParse(moderator.id).success)return res.status(403).json({error:"FORBIDDEN"});
   let client:PoolClient|undefined;let transactionOpen=false;
   try{
    client=await pool.connect();await client.query("BEGIN");transactionOpen=true;
-   const locked=await client.query("SELECT id,approval_status FROM source_registry WHERE id=$1 FOR UPDATE",[id.data]);
-   if(!locked.rows[0]){
+   const locked=await client.query("SELECT id,approval_status,terms_url FROM source_registry WHERE id=$1 FOR UPDATE",[id.data]);
+   const source=locked.rows[0];
+   if(!source){
     await client.query("ROLLBACK");transactionOpen=false;
     return res.status(404).json({error:"SOURCE_NOT_FOUND"});
    }
-   if(locked.rows[0].approval_status==="approved"&&decision.decision==="approve"){
+   if(decision.decision==="approve"&&!source.terms_url){
+    await client.query("ROLLBACK");transactionOpen=false;
+    return res.status(422).json({error:"SOURCE_TERMS_URL_MISSING"});
+   }
+   if(decision.termsReviewed&&!source.terms_url){
+    await client.query("ROLLBACK");transactionOpen=false;
+    return res.status(422).json({error:"SOURCE_TERMS_URL_MISSING"});
+   }
+   if(source.approval_status==="approved"&&decision.decision==="approve"){
     await client.query("ROLLBACK");transactionOpen=false;
     return res.status(409).json({error:"SOURCE_ALREADY_APPROVED"});
    }
    const approved=decision.decision==="approve";
+   const robotsChecked=decision.robotsResult!=="not_checked";
+   const robotsAllowed=decision.robotsResult==="allowed"?true:decision.robotsResult==="disallowed"?false:null;
    await client.query(`UPDATE source_registry SET
-     robots_checked_at=now(),robots_allowed=$2,
-     terms_reviewed_at=CASE WHEN $3 THEN now() ELSE NULL END,
-     approval_status=$4,
-     approved_by=CASE WHEN $4='approved' THEN $5 ELSE NULL END,
-     approved_at=CASE WHEN $4='approved' THEN now() ELSE NULL END,
+     robots_checked_at=CASE WHEN $2 THEN now() ELSE NULL END,
+     robots_allowed=$3,
+     terms_reviewed_at=CASE WHEN $4 THEN now() ELSE NULL END,
+     approval_status=$5,
+     approved_by=CASE WHEN $5='approved' THEN $6 ELSE NULL END,
+     approved_at=CASE WHEN $5='approved' THEN now() ELSE NULL END,
      updated_at=now()
-    WHERE id=$1`,[id.data,decision.robotsAllowed,decision.termsReviewed,approved?"approved":"rejected",moderator.id]);
+    WHERE id=$1`,[id.data,robotsChecked,robotsAllowed,decision.termsReviewed,approved?"approved":"rejected",moderator.id]);
    await client.query(`INSERT INTO source_registry_audit(source_registry_id,actor_id,action,reason,robots_allowed,terms_reviewed)
-    VALUES($1,$2,$3,$4,$5,$6)`,[id.data,moderator.id,approved?"approve":"reject",decision.reason,decision.robotsAllowed,decision.termsReviewed]);
+    VALUES($1,$2,$3,$4,$5,$6)`,[id.data,moderator.id,approved?"approve":"reject",decision.reason,robotsAllowed,decision.termsReviewed]);
    await client.query("COMMIT");transactionOpen=false;
    return res.status(200).json({data:{sourceId:id.data,approvalStatus:approved?"approved":"rejected"}});
   }catch(error){

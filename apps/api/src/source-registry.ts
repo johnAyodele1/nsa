@@ -76,7 +76,7 @@ export function createSourceRegistryRouter(pool:Pool|null,authenticate:RequestHa
      robots_allowed=$3,
      terms_reviewed_at=CASE WHEN $4 THEN now() ELSE NULL END,
      approval_status=$5::source_approval_status,
-     approved_by=CASE WHEN $5::source_approval_status='approved' THEN $6 ELSE NULL END,
+     approved_by=CASE WHEN $5::source_approval_status='approved' THEN $6::uuid ELSE NULL END,
      approved_at=CASE WHEN $5::source_approval_status='approved' THEN now() ELSE NULL END,
      updated_at=now()
     WHERE id=$1`,[id.data,robotsChecked,robotsAllowed,decision.termsReviewed,approved?"approved":"rejected",moderator.id]);

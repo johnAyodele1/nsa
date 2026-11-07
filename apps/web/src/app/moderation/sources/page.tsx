@@ -55,7 +55,7 @@ export default function SourceRegistryPage(){
    });
    const body=await response.json() as {error?:string};
    if(!response.ok)throw new Error(body.error??"Source decision could not be saved.");
-   setNotice(item.publisherName+" "+(decision==="approve"?"approved for ingestion.":"rejected."));
+   setNotice(item.publisherName+" "+(decision==="approve"?"approved for ingestion.":"rejected; ingestion disabled."));
    await load();
   }catch(e){setError(e instanceof Error?e.message:"Could not save source decision.");}
   finally{setSaving(null);}
@@ -111,7 +111,11 @@ export default function SourceRegistryPage(){
         <button className="mod-approve" disabled={saving===item.id||review.robotsResult!=="allowed"||!review.termsReviewed||!item.termsUrl||review.reason.trim().length<10} onClick={()=>void decide(item,"approve")}>{saving===item.id?"Saving…":"Approve for ingestion"}</button>
        </div>
       </>}
-      {item.approvalStatus==="approved"&&item.termsUrl&&<p className="mod-notice">Approved {item.approvedAt?new Date(item.approvedAt).toLocaleString("en-NG"):""} · Worker may poll this feed when its next poll is due.</p>}
+      {item.approvalStatus==="approved"&&<div className="source-review-checks">
+       <p className="mod-notice">Approved {item.approvedAt?new Date(item.approvedAt).toLocaleString("en-NG"):""}{item.termsUrl?" · Worker may poll this feed when its next poll is due.":" · Worker polling is blocked until the terms URL is registered and reviewed."}</p>
+       <label className="mod-field">Reason to revoke approval<textarea rows={2} maxLength={1000} value={review.reason} onChange={e=>update(item.id,{reason:e.target.value})} placeholder="Explain why this source should no longer be polled (minimum 10 characters)."/></label>
+       <button className="mod-reject" disabled={saving===item.id||review.reason.trim().length<10} onClick={()=>void decide(item,"reject")}>{saving===item.id?"Saving…":"Revoke approval and stop polling"}</button>
+      </div>}
      </article>;
     })}
    </section>

@@ -133,4 +133,15 @@ describe("source registry moderation API",()=>{
   expect(db.clientQuery.mock.calls.map(call=>call[0])).toEqual(["BEGIN",expect.stringContaining("FOR UPDATE"),expect.stringContaining("UPDATE source_registry"),expect.stringContaining("INSERT INTO source_registry_audit"),"ROLLBACK"]);
   expect(db.release).toHaveBeenCalledOnce();
  });
+ it("allows a moderator to revoke an existing approval and stops future polling",async()=>{
+  const query=moderatorQuery();
+  const db=sourceClient("approved");
+  const app=createApp({pool:{query,connect:db.connect} as never,allowedOrigins:[],authMiddleware:auth});
+  await request(app).post("/v1/moderation/source-registry/"+sourceId+"/decision")
+   .send({decision:"reject",robotsResult:"not_checked",termsReviewed:false,reason:"Publisher policy changed; revoke approval"}).expect(200,{data:{sourceId,approvalStatus:"rejected"}});
+  expect(db.clientQuery.mock.calls[2]?.[1]).toEqual([sourceId,false,null,false,"rejected",moderatorId]);
+  expect(db.clientQuery.mock.calls[3]?.[1]).toEqual([sourceId,moderatorId,"reject","Publisher policy changed; revoke approval",null,false]);
+  expect(db.clientQuery.mock.calls.at(-1)?.[0]).toBe("COMMIT");
+ });
+
 });

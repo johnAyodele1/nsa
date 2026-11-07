@@ -36,7 +36,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records every migration once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql","0018_source_registry_moderation.sql","0019_source_registry_attestation_integrity.sql"]);
  });
  it("registers, signs in, resolves and revokes local email/password sessions",async()=>{
   const email="auth-integration@example.test";const password="correct-horse-battery-staple-2026";
@@ -153,4 +153,49 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  it("does not allow an unverified or source-less incident to be published",async()=>{await expect(pool.query("INSERT INTO incidents(title,summary,category,state,occurred_at,published_at,verification_status,status,source_count,public_source_url,reviewed_by,reviewed_at) VALUES($1,$2,$3,$4,now(),now(),'unverified','published',0,NULL,$5,now())",["Unverified public claim","This claim has not been corroborated and must not be published as a fact.","robbery","Lagos","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();});
  it("does not allow an unreviewed source to be marked approved",async()=>{await expect(pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,approval_status) VALUES($1,$2,$3,$4,$5,$6)",["Unreviewed Publisher","Unreviewed Feed","https://example.org","https://example.org/feed.xml","rss","approved"])).rejects.toThrow();});
  it("does not approve sources that disallow robots access",async()=>{await expect(pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,robots_checked_at,robots_allowed,terms_reviewed_at,approval_status,approved_by,approved_at) VALUES($1,$2,$3,$4,$5,now(),false,now(),'approved',$6,now())",["Blocked Publisher","Blocked Feed","https://blocked.example","https://blocked.example/feed.xml","rss","aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();});
+ it("approves a source only after explicit checks and writes the audit row atomically in PostgreSQL",async()=>{
+  const moderatorId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const inserted=await pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url) VALUES($1,$2,$3,$4,'rss',$5) RETURNING id",["Integration Publisher","Integration Feed","https://integration-source.example","https://integration-source.example/feed.xml","https://integration-source.example/terms"]);
+  const id=inserted.rows[0].id as string;
+  await request(moderationApp).post(`/v1/moderation/source-registry/${id}/decision`).set("authorization","Bearer "+moderatorToken)
+   .send({decision:"approve",robotsResult:"allowed",termsReviewed:true,reason:"Verified robots.txt and reviewed publisher terms"}).expect(200,{data:{sourceId:id,approvalStatus:"approved"}});
+  const source=await pool.query("SELECT approval_status,robots_checked_at,robots_allowed,terms_reviewed_at,terms_url,approved_by,approved_at FROM source_registry WHERE id=$1",[id]);
+  expect(source.rows[0]).toMatchObject({approval_status:"approved",robots_allowed:true,terms_url:"https://integration-source.example/terms",approved_by:moderatorId});
+  expect(source.rows[0].robots_checked_at).toBeInstanceOf(Date);
+  expect(source.rows[0].terms_reviewed_at).toBeInstanceOf(Date);
+  expect(source.rows[0].approved_at).toBeInstanceOf(Date);
+  const audit=await pool.query("SELECT actor_id,action,reason,robots_allowed,terms_reviewed FROM source_registry_audit WHERE source_registry_id=$1",[id]);
+  expect(audit.rows).toEqual([{actor_id:moderatorId,action:"approve",reason:"Verified robots.txt and reviewed publisher terms",robots_allowed:true,terms_reviewed:true}]);
+  await expect(pool.query("UPDATE source_registry_audit SET reason='changed audit record' WHERE source_registry_id=$1",[id])).rejects.toThrow("Audit records are append-only");
+ });
+
+ it("does not approve a source without a terms URL or leave a false robots attestation",async()=>{
+  const missingTerms=await pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind) VALUES($1,$2,$3,$4,'rss') RETURNING id",["No Terms Publisher","No Terms Feed","https://no-terms.example","https://no-terms.example/feed.xml"]);
+  const missingId=missingTerms.rows[0].id as string;
+  await request(moderationApp).post(`/v1/moderation/source-registry/${missingId}/decision`).set("authorization","Bearer "+moderatorToken)
+   .send({decision:"approve",robotsResult:"allowed",termsReviewed:true,reason:"Tried to approve without a terms URL"}).expect(422,{error:"SOURCE_TERMS_URL_MISSING"});
+  const rejected=await pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url) VALUES($1,$2,$3,$4,'rss',$5) RETURNING id",["Rejected Publisher","Rejected Feed","https://reject-source.example","https://reject-source.example/feed.xml","https://reject-source.example/terms"]);
+  const rejectedId=rejected.rows[0].id as string;
+  await request(moderationApp).post(`/v1/moderation/source-registry/${rejectedId}/decision`).set("authorization","Bearer "+moderatorToken)
+   .send({decision:"reject",robotsResult:"not_checked",termsReviewed:false,reason:"Rejected before external policy review"}).expect(200);
+  const stored=await pool.query("SELECT approval_status,robots_checked_at,robots_allowed,terms_reviewed_at FROM source_registry WHERE id=$1",[rejectedId]);
+  expect(stored.rows[0]).toMatchObject({approval_status:"rejected",robots_checked_at:null,robots_allowed:null,terms_reviewed_at:null});
+  const audit=await pool.query("SELECT robots_allowed,terms_reviewed FROM source_registry_audit WHERE source_registry_id=$1",[rejectedId]);
+  expect(audit.rows).toEqual([{robots_allowed:null,terms_reviewed:false}]);
+ });
+
+ it("keeps source audit writes append-only and grants the API role only required privileges",async()=>{
+  const privileges=await pool.query(`SELECT
+   has_table_privilege('nsa_app','source_registry_audit','SELECT') AS can_read_audit,
+   has_table_privilege('nsa_app','source_registry_audit','INSERT') AS can_insert_audit,
+   has_table_privilege('nsa_app','source_registry_audit','UPDATE') AS can_update_audit,
+   has_table_privilege('nsa_app','source_registry_audit','DELETE') AS can_delete_audit,
+   has_table_privilege('nsa_app','source_registry_audit','TRUNCATE') AS can_truncate_audit,
+   has_column_privilege('nsa_app','source_registry','approval_status','UPDATE') AS can_update_approval,
+   has_column_privilege('nsa_app','source_registry','publisher_name','UPDATE') AS can_update_publisher`);
+  expect(privileges.rows[0]).toEqual({can_read_audit:true,can_insert_audit:true,can_update_audit:false,can_delete_audit:false,can_truncate_audit:false,can_update_approval:true,can_update_publisher:false});
+  await expect(pool.query("INSERT INTO source_registry_audit(source_registry_id,actor_id,action,reason,terms_reviewed) VALUES($1,$2,'suspend','Unsupported action must be rejected',false)",[sourceRegistryId,"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();
+  await expect(pool.query("INSERT INTO source_registry_audit(source_registry_id,actor_id,action,reason,terms_reviewed) VALUES($1,$2,'reject','          ',false)",[sourceRegistryId,"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"])).rejects.toThrow();
+ });
+
 });

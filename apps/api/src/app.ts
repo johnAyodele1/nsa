@@ -90,6 +90,11 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
   if(body.data.decision==="approve"&&(body.data.robotsAllowed!==true||body.data.termsReviewed!==true))return res.status(422).json({error:"SOURCE_REVIEW_ATTESTATIONS_REQUIRED"});
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   const moderator=res.locals.moderator;if(!moderator)return res.status(403).json({error:"FORBIDDEN"});
+  try{
+   const readiness=await pool.query("SELECT to_regclass('public.source_registry_moderation_audit') IS NOT NULL AS audit_table_ready,has_table_privilege(current_user,'public.source_registry','UPDATE') AS can_update_sources,CASE WHEN to_regclass('public.source_registry_moderation_audit') IS NULL THEN false ELSE has_table_privilege(current_user,'public.source_registry_moderation_audit','INSERT') END AS can_write_audit");
+   const ready=readiness.rows[0];
+   if(!ready?.audit_table_ready||!ready?.can_update_sources||!ready?.can_write_audit)return res.status(503).json({error:"SOURCE_APPROVAL_MIGRATION_REQUIRED",migration:"0018_source_registry_moderation.sql",message:"Source approval database migration or API database permissions are missing. Run the API database migrations and restart the API."});
+  }catch(error){return next(error);}
   let client:PoolClient|undefined;let transactionOpen=false;
   try{
    client=await pool.connect();await client.query("BEGIN");transactionOpen=true;

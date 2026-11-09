@@ -17,7 +17,7 @@ export default function SourceRegistryPage(){
  const auth=useNsaAuth();
  const [sources,setSources]=useState<Source[]>([]);
  const [filter,setFilter]=useState<Filter>("pending");
- const [loading,setLoading]=useState(false);
+ const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState<string|null>(null);
  const [reason,setReason]=useState<Record<string,string>>({});
  const [robots,setRobots]=useState<Record<string,boolean>>({});
@@ -44,7 +44,7 @@ export default function SourceRegistryPage(){
   setSaving(source.id);setError("");setNotice("");
   try{
    const response=await apiFetch("v1/moderation/source-registry/"+source.id+"/decision",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision,reason:note,...(decision==="approve"?{robotsAllowed:true,termsReviewed:true}:{})})});
-   const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error??"Source decision failed.");
+   const body=await response.json() as {error?:string;message?:string};if(!response.ok){if(body.error==="SOURCE_APPROVAL_MIGRATION_REQUIRED")throw new Error(body.message??"Migration 0018 is missing. Run pnpm --filter @nsa/api db:migrate and restart the API.");if(body.error==="SOURCE_REVIEW_ATTESTATIONS_REQUIRED")throw new Error("Confirm both robots.txt and terms-of-use checks before approval.");if(body.error==="SOURCE_TERMS_URL_REQUIRED")throw new Error("This publisher has no terms URL. A valid terms URL is required.");if(body.error==="INVALID_SOURCE_STATE")throw new Error("This source changed since the page loaded. Refresh and try again.");throw new Error(body.message??body.error??"Source decision failed.");}
    setNotice(source.displayName+" "+(decision==="approve"?"approved for ingestion":decision==="reject"?"rejected":"suspended")+".");
    await load();
   }catch(e){setError(e instanceof Error?e.message:"Source decision failed.");}
@@ -62,8 +62,9 @@ export default function SourceRegistryPage(){
     <div><strong>{counts.pending}</strong><span>Pending review</span></div><div><strong>{counts.approved}</strong><span>Approved</span></div><div><strong>{counts.suspended}</strong><span>Suspended</span></div><div><strong>{counts.rejected}</strong><span>Rejected</span></div>
    </section>
    <section className="mod-queue">
-    <div className="mod-queue-head"><div><span className="eyebrow">SOURCE APPROVAL</span><h2>{visible.length} publishers</h2></div><button className="mod-secondary" onClick={()=>void load()} disabled={loading}>{loading?"Refreshing…":"Refresh registry"}</button></div>
+    <div className="mod-queue-head"><div><span className="eyebrow">SOURCE APPROVAL</span><h2>{visible.length} publishers</h2></div><button className="mod-secondary" onClick={()=>void load()} disabled={loading||saving!==null}>{loading?"Refreshing…":"Refresh registry"}</button></div>
     <div className="source-filters">{filters.map(value=><button key={value} className={filter===value?"active":""} onClick={()=>setFilter(value)}>{value==="all"?"All":value.replace(/^[a-z]/,c=>c.toUpperCase())}</button>)}</div>
+    {loading&&sources.length===0&&<div className="source-loading-panel" role="status" aria-live="polite"><span className="source-spinner"/><span>Loading publisher registry…</span></div>}
     {visible.length===0&&!loading&&<div className="mod-empty"><h3>{filter==="pending"?"No publishers awaiting approval":"No publishers in this view"}</h3><p>Refresh the registry to check for newly seeded or added sources.</p></div>}
     {visible.map(source=><article className="source-card" key={source.id}>
      <div className="source-card-head">
@@ -84,10 +85,12 @@ export default function SourceRegistryPage(){
      </div>}
      <label className="mod-field">Review notes<textarea rows={2} maxLength={1000} value={reason[source.id]??""} onChange={event=>setReason(current=>({...current,[source.id]:event.target.value}))} placeholder="Record the terms / robots review and any restrictions. At least 10 characters."/></label>
      <div className="source-actions">
-      {source.approvalStatus!=="approved"&&source.approvalStatus!=="rejected"&&<button className="mod-approve" disabled={saving===source.id||!source.termsUrl||!robots[source.id]||!terms[source.id]} onClick={()=>void decide(source,"approve")}>{saving===source.id?"Saving…":"Approve source"}</button>}
-      {source.approvalStatus!=="rejected"&&<button className="mod-reject" disabled={saving===source.id} onClick={()=>void decide(source,source.approvalStatus==="suspended"?"reject":"suspend")}>{source.approvalStatus==="suspended"?"Reject source":"Suspend source"}</button>}
+      {source.approvalStatus!=="approved"&&source.approvalStatus!=="rejected"&&<button className="mod-approve" disabled={saving!==null||!source.termsUrl||!robots[source.id]||!terms[source.id]} onClick={()=>void decide(source,"approve")}>{saving===source.id?"Approving…":"Approve source"}</button>}
+      {source.approvalStatus!=="rejected"&&<button className="mod-reject" disabled={saving!==null} onClick={()=>void decide(source,source.approvalStatus==="suspended"?"reject":"suspend")}>{saving===source.id?"Saving…":source.approvalStatus==="suspended"?"Reject source":"Suspend source"}</button>}
       {source.approvalStatus==="rejected"&&<span className="mod-muted">Rejected sources remain in the audit history and cannot be polled.</span>}
      </div>
+     {source.approvalStatus==="pending"&&<p className="source-action-hint">{!source.termsUrl?"Approval unavailable: this publisher has no terms URL.":!robots[source.id]||!terms[source.id]?"Approval is disabled until both policy checks above are confirmed.":"Policy checks complete. Add a review note of at least 10 characters to approve."}</p>}
+     {saving===source.id&&<p className="source-saving-message" role="status" aria-live="polite">Saving your decision. Do not close this page…</p>}
     </article>)}
    </section>
    <div className="source-safety-note">Approval enables feed polling only. Every matched article still enters the separate ingestion review queue. Publishing an incident remains a separate moderator decision.</div>

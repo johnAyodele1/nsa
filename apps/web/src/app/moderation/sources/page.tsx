@@ -77,13 +77,13 @@ export default function SourceRegistryPage(){
       <div><span>Publisher type</span><b>{source.isOfficial?"Official agency":"News / public source"}</b></div>
      </div>
      {source.attributionText&&<p className="source-attribution">{source.attributionText}</p>}
-     {source.approvalStatus==="pending"&&<div className="source-review">
+     {(source.approvalStatus==="pending"||source.approvalStatus==="suspended")&&<div className="source-review">
       <label className="source-attest"><input type="checkbox" checked={Boolean(robots[source.id])} onChange={event=>setRobots(current=>({...current,[source.id]:event.target.checked}))}/><span>I checked the publisher's robots.txt and confirmed automated feed access is allowed.</span></label>
       <label className="source-attest"><input type="checkbox" checked={Boolean(terms[source.id])} onChange={event=>setTerms(current=>({...current,[source.id]:event.target.checked}))}/><span>I reviewed the linked terms / usage policy and confirmed this limited metadata ingestion is permitted.</span></label>
      </div>}
      <label className="mod-field">Review notes<textarea rows={2} maxLength={1000} value={reason[source.id]??""} onChange={event=>setReason(current=>({...current,[source.id]:event.target.value}))} placeholder="Record the terms / robots review and any restrictions. At least 10 characters."/></label>
      <div className="source-actions">
-      {source.approvalStatus!=="approved"&&source.approvalStatus!=="rejected"&&<button className="mod-approve" disabled={saving===source.id||(source.approvalStatus==="pending"&&(!robots[source.id]||!terms[source.id]))} onClick={()=>void decide(source,"approve")}>{saving===source.id?"Saving…":"Approve source"}</button>}
+      {source.approvalStatus!=="approved"&&source.approvalStatus!=="rejected"&&<button className="mod-approve" disabled={saving===source.id||!source.termsUrl||!robots[source.id]||!terms[source.id]} onClick={()=>void decide(source,"approve")}>{saving===source.id?"Saving…":"Approve source"}</button>}
       {source.approvalStatus!=="rejected"&&<button className="mod-reject" disabled={saving===source.id} onClick={()=>void decide(source,source.approvalStatus==="suspended"?"reject":"suspend")}>{source.approvalStatus==="suspended"?"Reject source":"Suspend source"}</button>}
       {source.approvalStatus==="rejected"&&<span className="mod-muted">Rejected sources remain in the audit history and cannot be polled.</span>}
      </div>

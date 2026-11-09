@@ -22,6 +22,21 @@ describe("Express API",()=>{
    expect(entry.durationMs).toEqual(expect.any(Number));
   }finally{log.mockRestore();}
  });
+ it("lists the source registry for authenticated moderators",async()=>{
+  const source={id:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",publisher_name:"Premium Times",display_name:"Latest News",canonical_url:"https://www.premiumtimesng.com/",feed_url:"https://www.premiumtimesng.com/feed",source_kind:"rss",terms_url:"https://www.premiumtimesng.com/",licence_name:null,attribution_text:"Attribute and link to the original",is_official:false,robots_allowed:null,robots_checked_at:null,terms_reviewed_at:null,approval_status:"pending",approved_at:null,created_at:new Date("2026-11-02T08:00:00.000Z")};
+  const query=vi.fn().mockResolvedValueOnce({rows:[{id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",role:"moderator",is_active:true}]}).mockResolvedValueOnce({rows:[source]});
+  const app=createApp({pool:{query} as never,allowedOrigins:[],authMiddleware:auth});
+  const response=await request(app).get("/v1/moderation/source-registry").expect(200);
+  expect(response.body.data[0]).toMatchObject({publisherName:"Premium Times",approvalStatus:"pending",feedUrl:source.feed_url});
+  expect(query.mock.calls[1]?.[0]).toContain("FROM source_registry");
+ });
+ it("requires explicit robots and terms attestations before source approval",async()=>{
+  const query=vi.fn().mockResolvedValueOnce({rows:[{id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",role:"moderator",is_active:true}]});
+  const connect=vi.fn();
+  const app=createApp({pool:{query,connect} as never,allowedOrigins:[],authMiddleware:auth});
+  await request(app).post("/v1/moderation/source-registry/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/decision").send({decision:"approve",reason:"Reviewed source terms"}).expect(422,{error:"SOURCE_REVIEW_ATTESTATIONS_REQUIRED"});
+  expect(connect).not.toHaveBeenCalled();
+ });
  it("rejects invalid filters before querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?limit=500").expect(400);expect(query).not.toHaveBeenCalled();});
  it("returns feed records and applies the composite cursor to SQL",async()=>{const query=vi.fn().mockResolvedValue({rows:[incident,{...incident,id:"3f4e4b18-22b5-4d14-bbcb-17c48edc05d2"}]});const app=createApp({pool:{query} as never,allowedOrigins:[]});const cursor=Buffer.from(JSON.stringify({publishedAt:"2026-11-02T08:45:00.000Z",id:"4f4e4b18-22b5-4d14-bbcb-17c48edc05d3"})).toString("base64url");const response=await request(app).get(`/v1/incidents?limit=1&cursor=${cursor}`).expect(200);expect(response.body.data).toHaveLength(1);expect(response.body.nextCursor).toBeTypeOf("string");expect(query.mock.calls[0]?.[0]).toContain("status = 'published'");expect(query.mock.calls[0]?.[0]).toContain("(published_at,id) <");});
  it("rejects unsupported priority filters before querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?priority=urgent").expect(400);expect(query).not.toHaveBeenCalled();});

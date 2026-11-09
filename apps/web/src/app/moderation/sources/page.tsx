@@ -72,6 +72,7 @@ export default function SourceRegistryPage(){
      </div>
      <div className="source-details">
       <div><span>Feed endpoint</span><a href={source.feedUrl} target="_blank" rel="noreferrer">{source.feedUrl}</a></div>
+      <div><span>Robots policy</span><a href={new URL(source.canonicalUrl).origin+"/robots.txt"} target="_blank" rel="noreferrer">Open robots.txt ↗</a></div>
       <div><span>Terms / usage policy</span>{source.termsUrl?<a href={source.termsUrl} target="_blank" rel="noreferrer">Review publisher terms ↗</a>:<b className="source-missing">No terms URL supplied</b>}</div>
       <div><span>Feed type</span><b>{source.sourceKind.toUpperCase()}</b></div>
       <div><span>Publisher type</span><b>{source.isOfficial?"Official agency":"News / public source"}</b></div>

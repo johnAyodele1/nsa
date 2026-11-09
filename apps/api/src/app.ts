@@ -93,8 +93,11 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
   let client:PoolClient|undefined;let transactionOpen=false;
   try{
    client=await pool.connect();await client.query("BEGIN");transactionOpen=true;
-   const current=await client.query("SELECT id,approval_status FROM source_registry WHERE id=$1 FOR UPDATE",[id.data]);
+   const current=await client.query("SELECT id,approval_status,terms_url FROM source_registry WHERE id=$1 FOR UPDATE",[id.data]);
    if(!current.rows[0]){await client.query("ROLLBACK");transactionOpen=false;return res.status(404).json({error:"SOURCE_NOT_FOUND"});}
+   const currentStatus=String(current.rows[0].approval_status);
+   if((body.data.decision==="approve"&&!["pending","suspended"].includes(currentStatus))||(body.data.decision==="suspend"&&currentStatus!=="approved")||(body.data.decision==="reject"&&currentStatus==="rejected")){await client.query("ROLLBACK");transactionOpen=false;return res.status(409).json({error:"INVALID_SOURCE_STATE"});}
+   if(body.data.decision==="approve"&&!current.rows[0].terms_url){await client.query("ROLLBACK");transactionOpen=false;return res.status(422).json({error:"SOURCE_TERMS_URL_REQUIRED"});}
    const status=body.data.decision==="approve"?"approved":body.data.decision==="reject"?"rejected":"suspended";
    if(body.data.decision==="approve"){
     await client.query("UPDATE source_registry SET approval_status='approved',robots_allowed=true,robots_checked_at=now(),terms_reviewed_at=now(),approved_by=$2,approved_at=now(),updated_at=now() WHERE id=$1",[id.data,moderator.id]);

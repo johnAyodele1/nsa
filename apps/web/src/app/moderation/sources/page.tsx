@@ -89,6 +89,8 @@ export default function SourceRegistryPage(){
       {source.approvalStatus!=="rejected"&&<button className="mod-reject" disabled={saving!==null} onClick={()=>void decide(source,source.approvalStatus==="suspended"?"reject":"suspend")}>{saving===source.id?"Saving…":source.approvalStatus==="suspended"?"Reject source":"Suspend source"}</button>}
       {source.approvalStatus==="rejected"&&<span className="mod-muted">Rejected sources remain in the audit history and cannot be polled.</span>}
      </div>
+     {source.approvalStatus==="pending"&&<p className="source-action-hint">{!source.termsUrl?"Approval unavailable: this publisher has no terms URL.":!robots[source.id]||!terms[source.id]?"Approval is disabled until both policy checks above are confirmed.":"Policy checks complete. Add a review note of at least 10 characters to approve."}</p>}
+     {saving===source.id&&<p className="source-saving-message" role="status" aria-live="polite">Saving your decision. Do not close this page…</p>}
     </article>)}
    </section>
    <div className="source-safety-note">Approval enables feed polling only. Every matched article still enters the separate ingestion review queue. Publishing an incident remains a separate moderator decision.</div>

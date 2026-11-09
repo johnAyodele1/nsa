@@ -1,10 +1,10 @@
 import {NextRequest,NextResponse} from "next/server";
-import {assertWebSessionStoreReady,createWebSession,SESSION_COOKIE,CSRF_COOKIE,sessionCookieOptions,csrfCookieOptions} from "../../../../server/session";
+import {assertWebSessionStoreReady,createWebSession,SESSION_COOKIE,CSRF_COOKIE,sessionCookieOptions,csrfCookieOptions,resolveInternalApiUrl} from "../../../../server/session";
 const credentialsSchema={email:/^[^\s@]+@[^\s@]+\.[^\s@]+$/,password:(value:string)=>value.length>=12&&value.length<=128};
 export async function POST(request:NextRequest){
  const origin=request.headers.get("origin"),expected=process.env.WEB_PUBLIC_ORIGIN??request.nextUrl.origin;
  if(!origin||origin!==expected)return NextResponse.json({error:"ORIGIN_VALIDATION_FAILED"},{status:403});
- const base=process.env.API_INTERNAL_URL;if(!base)return NextResponse.json({error:"API_NOT_CONFIGURED"},{status:503});
+ const base=resolveInternalApiUrl();if(!base)return NextResponse.json({error:"API_NOT_CONFIGURED"},{status:503});
  try{
   const body=await request.json() as {email?:unknown;password?:unknown};
   if(typeof body.email!=="string"||typeof body.password!=="string"||body.email.length>254||!credentialsSchema.email.test(body.email)||!credentialsSchema.password(body.password))return NextResponse.json({error:"INVALID_CREDENTIALS"},{status:400});

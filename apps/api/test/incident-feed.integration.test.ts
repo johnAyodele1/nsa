@@ -36,7 +36,17 @@ describe.skipIf(!databaseUrl)("PostgreSQL incident, report and moderation integr
  afterAll(async()=>{await pool.end();});
  it("records every migration once and skips them on subsequent runs",async()=>{
   const result=await pool.query("SELECT version FROM schema_migrations ORDER BY version");
-  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql"]);
+  expect(result.rows.map(row=>row.version)).toEqual(["0001_initial.sql","0002_auth_reports.sql","0003_agency_directory.sql","0004_ingestion_security.sql","0005_live_stream_security.sql","0006_privacy_erasure.sql","0007_emergency_contacts.sql","0008_seed_nigerian_news_sources.sql","0009_expand_nigerian_news_and_alert_sources.sql","0010_add_regional_nigerian_news_sources.sql","0011_add_incident_categories.sql","0012_incident_relevance_and_priority.sql","0013_local_email_auth.sql","0014_auth_session_cleanup.sql","0015_moderator_invite_audit_order.sql","0016_secure_moderator_invites.sql","0017_moderator_invite_claim.sql","0018_source_registry_moderation.sql"]);
+ });
+ it("approves a pending source only after policy attestations and records the audit",async()=>{
+  const pending=await pool.query("INSERT INTO source_registry(publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url,approval_status) VALUES($1,$2,$3,$4,'rss',$5,'pending') RETURNING id",["Integration Publisher","Integration Feed","https://publisher.example","https://publisher.example/feed.xml","https://publisher.example/terms"]);
+  const id=pending.rows[0].id as string;
+  await request(moderationApp).post("/v1/moderation/source-registry/"+id+"/decision").set("authorization","Bearer "+moderatorToken).send({decision:"approve",reason:"Reviewed publisher policy and access rules.",robotsAllowed:true,termsReviewed:true}).expect(200,{data:{sourceId:id,approvalStatus:"approved"}});
+  const stored=await pool.query("SELECT approval_status,robots_allowed,robots_checked_at,terms_reviewed_at,approved_by,approved_at FROM source_registry WHERE id=$1",[id]);
+  expect(stored.rows[0]).toMatchObject({approval_status:"approved",robots_allowed:true,approved_by:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"});
+  expect(stored.rows[0].robots_checked_at).toBeTruthy();expect(stored.rows[0].terms_reviewed_at).toBeTruthy();expect(stored.rows[0].approved_at).toBeTruthy();
+  const audit=await pool.query("SELECT action,reason FROM source_registry_moderation_audit WHERE source_registry_id=$1",[id]);
+  expect(audit.rows).toEqual([{action:"approve",reason:"Reviewed publisher policy and access rules."}]);
  });
  it("registers, signs in, resolves and revokes local email/password sessions",async()=>{
   const email="auth-integration@example.test";const password="correct-horse-battery-staple-2026";

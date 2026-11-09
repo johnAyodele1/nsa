@@ -75,6 +75,38 @@ export function createApp({pool,allowedOrigins,authMiddleware,agoraConfig}:Depen
   try{const result=await pool.query("SELECT id,title,summary,category,state,locality,occurred_at,source_url,created_at FROM incident_reports WHERE status='pending_review' ORDER BY created_at ASC,id ASC LIMIT $1",[parsed.data.limit]);const data=result.rows.map(row=>({id:row.id,title:row.title,summary:row.summary,category:row.category,state:row.state,locality:row.locality,occurredAt:new Date(row.occurred_at).toISOString(),sourceUrl:row.source_url,createdAt:new Date(row.created_at).toISOString()}));return res.status(200).json({data});}
   catch(error){return next(error);}
  });
+ app.get("/v1/moderation/source-registry",authenticate,requireModerator(pool),async(_req,res,next)=>{
+  if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  try{
+   const result=await pool.query("SELECT id,publisher_name,display_name,canonical_url,feed_url,source_kind,terms_url,licence_name,attribution_text,is_official,robots_allowed,robots_checked_at,terms_reviewed_at,approval_status,approved_at,created_at FROM source_registry ORDER BY CASE approval_status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 WHEN 'suspended' THEN 2 ELSE 3 END,publisher_name ASC");
+   return res.status(200).json({data:result.rows.map(row=>({id:row.id,publisherName:row.publisher_name,displayName:row.display_name,canonicalUrl:row.canonical_url,feedUrl:row.feed_url,sourceKind:row.source_kind,termsUrl:row.terms_url,licenceName:row.licence_name,attributionText:row.attribution_text,isOfficial:row.is_official,robotsAllowed:row.robots_allowed,robotsCheckedAt:row.robots_checked_at?new Date(row.robots_checked_at).toISOString():null,termsReviewedAt:row.terms_reviewed_at?new Date(row.terms_reviewed_at).toISOString():null,approvalStatus:row.approval_status,approvedAt:row.approved_at?new Date(row.approved_at).toISOString():null,createdAt:new Date(row.created_at).toISOString()}))});
+  }catch(error){return next(error);}
+ });
+ app.post("/v1/moderation/source-registry/:sourceId/decision",authenticate,requireModerator(pool),async(req,res,next)=>{
+  const id=z.string().uuid().safeParse(req.params.sourceId);
+  if(!id.success)return res.status(400).json({error:"INVALID_SOURCE_ID"});
+  const body=z.object({decision:z.enum(["approve","reject","suspend"]),reason:z.string().trim().min(10).max(1000),robotsAllowed:z.boolean().optional(),termsReviewed:z.boolean().optional()}).strict().safeParse(req.body);
+  if(!body.success)return res.status(400).json({error:"INVALID_SOURCE_DECISION",details:body.error.flatten()});
+  if(body.data.decision==="approve"&&(body.data.robotsAllowed!==true||body.data.termsReviewed!==true))return res.status(422).json({error:"SOURCE_REVIEW_ATTESTATIONS_REQUIRED"});
+  if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
+  const moderator=res.locals.moderator;if(!moderator)return res.status(403).json({error:"FORBIDDEN"});
+  let client:PoolClient|undefined;let transactionOpen=false;
+  try{
+   client=await pool.connect();await client.query("BEGIN");transactionOpen=true;
+   const current=await client.query("SELECT id,approval_status FROM source_registry WHERE id=$1 FOR UPDATE",[id.data]);
+   if(!current.rows[0]){await client.query("ROLLBACK");transactionOpen=false;return res.status(404).json({error:"SOURCE_NOT_FOUND"});}
+   const status=body.data.decision==="approve"?"approved":body.data.decision==="reject"?"rejected":"suspended";
+   if(body.data.decision==="approve"){
+    await client.query("UPDATE source_registry SET approval_status='approved',robots_allowed=true,robots_checked_at=now(),terms_reviewed_at=now(),approved_by=$2,approved_at=now(),updated_at=now() WHERE id=$1",[id.data,moderator.id]);
+   }else{
+    await client.query("UPDATE source_registry SET approval_status=$2,approved_by=CASE WHEN $2='rejected' THEN $3 ELSE approved_by END,approved_at=CASE WHEN $2='rejected' THEN now() ELSE approved_at END,updated_at=now() WHERE id=$1",[id.data,status,moderator.id]);
+   }
+   await client.query("INSERT INTO source_registry_moderation_audit(source_registry_id,actor_id,action,reason) VALUES($1,$2,$3,$4)",[id.data,moderator.id,body.data.decision,body.data.reason]);
+   await client.query("COMMIT");transactionOpen=false;
+   return res.status(200).json({data:{sourceId:id.data,approvalStatus:status}});
+  }catch(error){if(transactionOpen&&client){try{await client.query("ROLLBACK");}catch(rollbackError){console.error("Source registry transaction rollback failed",rollbackError);}}return next(error);}
+  finally{client?.release();}
+ });
  app.get("/v1/moderation/sources",authenticate,requireModerator(pool),async(_req,res,next)=>{
   if(!pool)return res.status(503).json({error:"SERVICE_UNAVAILABLE"});
   try{

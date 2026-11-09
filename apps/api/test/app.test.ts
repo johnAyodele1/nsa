@@ -37,6 +37,14 @@ describe("Express API",()=>{
   await request(app).post("/v1/moderation/source-registry/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/decision").send({decision:"approve",reason:"Reviewed source terms"}).expect(422,{error:"SOURCE_REVIEW_ATTESTATIONS_REQUIRED"});
   expect(connect).not.toHaveBeenCalled();
  });
+ it("returns an actionable migration error when source approval schema or grants are missing",async()=>{
+  const query=vi.fn().mockResolvedValueOnce({rows:[{id:"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",role:"moderator",is_active:true}]}).mockResolvedValueOnce({rows:[{audit_table_ready:false,can_update_sources:false,can_write_audit:false}]});
+  const connect=vi.fn();
+  const app=createApp({pool:{query,connect} as never,allowedOrigins:[],authMiddleware:auth});
+  const response=await request(app).post("/v1/moderation/source-registry/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/decision").send({decision:"approve",reason:"Reviewed source policy and feed access.",robotsAllowed:true,termsReviewed:true}).expect(503);
+  expect(response.body).toMatchObject({error:"SOURCE_APPROVAL_MIGRATION_REQUIRED",migration:"0018_source_registry_moderation.sql"});
+  expect(connect).not.toHaveBeenCalled();
+ });
  it("rejects invalid filters before querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?limit=500").expect(400);expect(query).not.toHaveBeenCalled();});
  it("returns feed records and applies the composite cursor to SQL",async()=>{const query=vi.fn().mockResolvedValue({rows:[incident,{...incident,id:"3f4e4b18-22b5-4d14-bbcb-17c48edc05d2"}]});const app=createApp({pool:{query} as never,allowedOrigins:[]});const cursor=Buffer.from(JSON.stringify({publishedAt:"2026-11-02T08:45:00.000Z",id:"4f4e4b18-22b5-4d14-bbcb-17c48edc05d3"})).toString("base64url");const response=await request(app).get(`/v1/incidents?limit=1&cursor=${cursor}`).expect(200);expect(response.body.data).toHaveLength(1);expect(response.body.nextCursor).toBeTypeOf("string");expect(query.mock.calls[0]?.[0]).toContain("status = 'published'");expect(query.mock.calls[0]?.[0]).toContain("(published_at,id) <");});
  it("rejects unsupported priority filters before querying",async()=>{const query=vi.fn();const app=createApp({pool:{query} as never,allowedOrigins:[]});await request(app).get("/v1/incidents?priority=urgent").expect(400);expect(query).not.toHaveBeenCalled();});
